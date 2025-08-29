@@ -1,0 +1,188 @@
+package com.diit.example.controller;
+
+import com.diit.common.log.annotation.OperationLog;
+import com.diit.common.log.annotation.UserAccessLog;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+
+/**
+ * 测试控制器
+ * 用于测试各种日志记录场景
+ * 
+ * @author diit
+ */
+@Slf4j
+@RestController
+@RequestMapping("/api/test")
+public class TestController {
+    
+    private final Random random = new Random();
+    
+    /**
+     * 测试正常访问日志
+     */
+    @GetMapping("/normal")
+    @UserAccessLog(
+        type = "测试", 
+        description = "正常访问测试",
+        module = "测试模块",
+        target = "正常访问"
+    )
+    public Map<String, Object> testNormalAccess() {
+        log.info("执行正常访问测试");
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "正常访问测试成功");
+        response.put("timestamp", System.currentTimeMillis());
+        
+        return response;
+    }
+    
+    /**
+     * 测试带参数的访问日志
+     */
+    @PostMapping("/with-params")
+    @UserAccessLog(
+        type = "测试", 
+        description = "带参数访问测试",
+        module = "测试模块",
+        target = "参数测试"
+    )
+    public Map<String, Object> testAccessWithParams(@RequestBody Map<String, Object> params) {
+        log.info("执行带参数访问测试，参数: {}", params);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "带参数访问测试成功");
+        response.put("receivedParams", params);
+        response.put("timestamp", System.currentTimeMillis());
+        
+        return response;
+    }
+    
+    /**
+     * 测试操作日志
+     */
+    @PostMapping("/operation")
+    @OperationLog(
+        type = "测试", 
+        description = "操作日志测试",
+        module = "测试模块",
+        target = "操作测试",
+        recordDataChange = true
+    )
+    public Map<String, Object> testOperationLog(@RequestBody Map<String, Object> data) {
+        log.info("执行操作日志测试，数据: {}", data);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "操作日志测试成功");
+        response.put("processedData", data);
+        response.put("timestamp", System.currentTimeMillis());
+        
+        return response;
+    }
+    
+    /**
+     * 测试异常情况
+     */
+    @GetMapping("/exception")
+    @UserAccessLog(
+        type = "测试", 
+        description = "异常测试",
+        module = "测试模块",
+        target = "异常测试"
+    )
+    public Map<String, Object> testException() {
+        log.info("执行异常测试");
+        
+        // 随机抛出异常
+        if (random.nextBoolean()) {
+            throw new RuntimeException("这是一个测试异常");
+        }
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "异常测试成功（没有异常）");
+        response.put("timestamp", System.currentTimeMillis());
+        
+        return response;
+    }
+    
+    /**
+     * 测试批量操作
+     */
+    @PostMapping("/batch")
+    @OperationLog(
+        type = "批量", 
+        description = "批量操作测试",
+        module = "测试模块",
+        target = "批量测试",
+        recordDataChange = true
+    )
+    public Map<String, Object> testBatchOperation(@RequestBody Map<String, Object> batchData) {
+        log.info("执行批量操作测试，数据量: {}", batchData.get("count"));
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "批量操作测试成功");
+        response.put("processedCount", batchData.get("count"));
+        response.put("timestamp", System.currentTimeMillis());
+        
+        return response;
+    }
+    
+    /**
+     * 测试敏感信息过滤
+     */
+    @PostMapping("/sensitive")
+    @UserAccessLog(
+        type = "测试", 
+        description = "敏感信息测试",
+        module = "测试模块",
+        target = "敏感信息"
+    )
+    public Map<String, Object> testSensitiveInfo(@RequestBody Map<String, Object> sensitiveData) {
+        log.info("执行敏感信息测试");
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "敏感信息测试成功");
+        response.put("note", "密码和token等敏感信息不会被记录");
+        response.put("timestamp", System.currentTimeMillis());
+        
+        return response;
+    }
+    
+    /**
+     * 测试性能监控
+     */
+    @GetMapping("/performance")
+    @UserAccessLog(
+        type = "测试", 
+        description = "性能测试",
+        module = "测试模块",
+        target = "性能监控"
+    )
+    public Map<String, Object> testPerformance() throws InterruptedException {
+        log.info("执行性能测试");
+        
+        // 模拟处理时间
+        long startTime = System.currentTimeMillis();
+        Thread.sleep(random.nextInt(1000) + 100); // 100-1100ms
+        long endTime = System.currentTimeMillis();
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "性能测试完成");
+        response.put("processingTime", endTime - startTime);
+        response.put("timestamp", endTime);
+        
+        return response;
+    }
+}

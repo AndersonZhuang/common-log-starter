@@ -1,0 +1,50 @@
+# 开发环境配置
+server:
+  port: 8080
+
+spring:
+  application:
+    name: common-log-starter-example
+
+# 开发环境日志配置
+diit:
+  log:
+    enabled: true
+    storage:
+      type: http  # 开发环境使用HTTP方式，便于测试
+      async: false  # 开发环境同步发送，便于调试
+      batchSize: 10
+      batchInterval: 500
+    
+    # HTTP配置（开发环境）
+    http:
+      enabled: true
+      url: http://localhost:8080/api/logs
+      method: POST
+      headers:
+        Content-Type: application/json
+    
+    # Kafka配置（开发环境禁用）
+    kafka:
+      enabled: false
+    
+    # Elasticsearch配置（开发环境禁用）
+    elasticsearch:
+      enabled: false
+    
+    # 日志记录配置
+    record:
+      recordParams: true
+      recordResponse: true  # 开发环境记录响应
+      recordStackTrace: true
+      sensitiveFields: password,token,secret
+
+# 开发环境日志级别
+logging:
+  level:
+    com.diit.common.log: DEBUG
+    com.diit.example: DEBUG
+    org.springframework.web: DEBUG
+    root: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

@@ -4,6 +4,19 @@ server:
 spring:
   application:
     name: common-log-starter-example
+  profiles:
+    active: dev
+
+# Knife4j配置
+knife4j:
+  enable: true
+  setting:
+    language: zh-CN
+    enable-swagger-models: true
+    enable-document-manage: true
+    swagger-model-name: 实体类列表
+  basic:
+    enable: false
 
 # 日志Starter配置
 diit:
@@ -11,25 +24,54 @@ diit:
     # 启用日志功能
     enabled: true
     
-    # 使用Kafka存储
+    # 存储配置
     storage:
-      type: kafka
+      type: kafka  # 可选: kafka, elasticsearch, database, http
       async: true
+      batchSize: 100
+      batchInterval: 1000
     
     # Kafka配置
     kafka:
       enabled: true
-      access-log-topic: access-log
-      operation-log-topic: operation-log
-      bootstrap-servers: localhost:9092
+      accessLogTopic: access-log
+      operationLogTopic: operation-log
+      bootstrapServers: localhost:9092
       producer:
+        acks: all
         retries: 3
-        batch-size: 16384
-        linger-ms: 1
-        buffer-memory: 33554432
+        batchSize: 16384
+        lingerMs: 1
+        bufferMemory: 33554432
+    
+    # Elasticsearch配置（备用）
+    elasticsearch:
+      enabled: false
+      hosts: localhost:9200
+      indexPrefix: log-
+      username: elastic
+      password: password
+    
+    # HTTP配置（备用）
+    http:
+      enabled: false
+      url: http://localhost:8080/api/logs
+      method: POST
+      headers:
+        Authorization: Bearer ${token}
+    
+    # 日志记录配置
+    record:
+      recordParams: true
+      recordResponse: false
+      recordStackTrace: true
+      sensitiveFields: password,token,secret
 
 # 日志配置
 logging:
   level:
     com.diit.common.log: DEBUG
+    com.diit.example: DEBUG
     root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

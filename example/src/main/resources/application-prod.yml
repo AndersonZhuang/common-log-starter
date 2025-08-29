@@ -1,0 +1,54 @@
+# 生产环境配置
+server:
+  port: 8080
+
+spring:
+  application:
+    name: common-log-starter-example
+
+# 生产环境日志配置
+diit:
+  log:
+    enabled: true
+    storage:
+      type: kafka  # 生产环境使用Kafka
+      async: true  # 生产环境异步发送
+      batchSize: 100
+      batchInterval: 1000
+    
+    # Kafka配置（生产环境）
+    kafka:
+      enabled: true
+      accessLogTopic: access-log
+      operationLogTopic: operation-log
+      bootstrapServers: kafka:9092  # 生产环境Kafka地址
+      producer:
+        acks: all
+        retries: 3
+        batchSize: 16384
+        lingerMs: 1
+        bufferMemory: 33554432
+    
+    # HTTP配置（生产环境禁用）
+    http:
+      enabled: false
+    
+    # Elasticsearch配置（生产环境禁用）
+    elasticsearch:
+      enabled: false
+    
+    # 日志记录配置
+    record:
+      recordParams: true
+      recordResponse: false  # 生产环境不记录响应
+      recordStackTrace: true
+      sensitiveFields: password,token,secret
+
+# 生产环境日志级别
+logging:
+  level:
+    com.diit.common.log: INFO
+    com.diit.example: INFO
+    root: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
