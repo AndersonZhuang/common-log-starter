@@ -53,13 +53,23 @@ public class TestController {
         module = "测试模块",
         target = "参数测试"
     )
-    public Map<String, Object> testAccessWithParams(@RequestBody Map<String, Object> params) {
-        log.info("执行带参数访问测试，参数: {}", params);
+    public Map<String, Object> testAccessWithParams(
+            @RequestBody(required = false) Map<String, Object> params,
+            @RequestParam Map<String, String> queryParams) {
+        
+        // 合并请求体参数和查询参数
+        Map<String, Object> allParams = new HashMap<>();
+        if (params != null) {
+            allParams.putAll(params);
+        }
+        allParams.putAll(queryParams);
+        
+        log.info("执行带参数访问测试，参数: {}", allParams);
         
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("message", "带参数访问测试成功");
-        response.put("receivedParams", params);
+        response.put("receivedParams", allParams);
         response.put("timestamp", System.currentTimeMillis());
         
         return response;
@@ -76,13 +86,23 @@ public class TestController {
         target = "操作测试",
         recordDataChange = true
     )
-    public Map<String, Object> testOperationLog(@RequestBody Map<String, Object> data) {
-        log.info("执行操作日志测试，数据: {}", data);
+    public Map<String, Object> testOperationLog(
+            @RequestBody(required = false) Map<String, Object> data,
+            @RequestParam Map<String, String> queryParams) {
+        
+        // 合并请求体参数和查询参数
+        Map<String, Object> allData = new HashMap<>();
+        if (data != null) {
+            allData.putAll(data);
+        }
+        allData.putAll(queryParams);
+        
+        log.info("执行操作日志测试，数据: {}", allData);
         
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("message", "操作日志测试成功");
-        response.put("processedData", data);
+        response.put("processedData", allData);
         response.put("timestamp", System.currentTimeMillis());
         
         return response;
@@ -125,13 +145,23 @@ public class TestController {
         target = "批量测试",
         recordDataChange = true
     )
-    public Map<String, Object> testBatchOperation(@RequestBody Map<String, Object> batchData) {
-        log.info("执行批量操作测试，数据量: {}", batchData.get("count"));
+    public Map<String, Object> testBatchOperation(
+            @RequestBody(required = false) Map<String, Object> batchData,
+            @RequestParam Map<String, String> queryParams) {
+        
+        // 合并请求体参数和查询参数
+        Map<String, Object> allData = new HashMap<>();
+        if (batchData != null) {
+            allData.putAll(batchData);
+        }
+        allData.putAll(queryParams);
+        
+        log.info("执行批量操作测试，数据: {}", allData);
         
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("message", "批量操作测试成功");
-        response.put("processedCount", batchData.get("count"));
+        response.put("processedData", allData);
         response.put("timestamp", System.currentTimeMillis());
         
         return response;
@@ -182,6 +212,64 @@ public class TestController {
         response.put("message", "性能测试完成");
         response.put("processingTime", endTime - startTime);
         response.put("timestamp", endTime);
+        
+        return response;
+    }
+    
+    /**
+     * 通用测试接口 - 支持多种Content-Type
+     */
+    @PostMapping("/universal")
+    @UserAccessLog(
+        type = "测试", 
+        description = "通用测试接口",
+        module = "测试模块",
+        target = "通用测试"
+    )
+    public Map<String, Object> testUniversal(
+            @RequestBody(required = false) Map<String, Object> bodyParams,
+            @RequestParam Map<String, String> queryParams,
+            @RequestHeader Map<String, String> headers) {
+        
+        log.info("执行通用测试，请求头: {}", headers);
+        
+        // 合并所有参数
+        Map<String, Object> allParams = new HashMap<>();
+        if (bodyParams != null) {
+            allParams.put("bodyParams", bodyParams);
+        }
+        allParams.put("queryParams", queryParams);
+        allParams.put("headers", headers);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "通用测试成功");
+        response.put("receivedData", allParams);
+        response.put("contentType", headers.get("content-type"));
+        response.put("timestamp", System.currentTimeMillis());
+        
+        return response;
+    }
+    
+    /**
+     * GET方式测试接口 - 只支持查询参数
+     */
+    @GetMapping("/get-test")
+    @UserAccessLog(
+        type = "测试", 
+        description = "GET方式测试",
+        module = "测试模块",
+        target = "GET测试"
+    )
+    public Map<String, Object> testGetMethod(@RequestParam Map<String, String> queryParams) {
+        log.info("执行GET方式测试，查询参数: {}", queryParams);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "GET方式测试成功");
+        response.put("queryParams", queryParams);
+        response.put("method", "GET");
+        response.put("timestamp", System.currentTimeMillis());
         
         return response;
     }
