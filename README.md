@@ -1,21 +1,19 @@
 # Common Log Starter
 
-通用日志记录Starter，支持访问日志和操作日志的自动记录。
+一个功能强大的Spring Boot日志记录Starter，支持访问日志和操作日志的自动记录，并提供多种日志存储方式。
 
-## 功能特性
+## ✨ 功能特性
 
-- 🚀 **即插即用**：引入依赖即可使用，无需额外配置
-- 🔧 **配置灵活**：支持多种存储方式和配置选项
-- 📊 **多种存储**：支持Kafka、Elasticsearch、数据库、HTTP等多种存储方式
-- 🎯 **AOP切面**：基于Spring AOP，非侵入式日志记录
-- 🔒 **安全过滤**：自动过滤敏感字段，保护用户隐私
-- 📱 **信息丰富**：记录IP、地理位置、浏览器、操作系统、设备类型等详细信息
-- ⚡ **异步处理**：异步发送日志，不影响接口响应速度
-- 🎨 **扩展性强**：支持自定义字段、过滤器等扩展功能
+- 🔍 **自动日志记录**：通过注解自动记录用户访问日志和操作日志
+- 🚀 **零配置启动**：默认配置即可使用，无需复杂配置
+- 🔧 **灵活配置**：支持多种日志存储方式（Kafka、Elasticsearch、数据库、HTTP）
+- 📊 **异步处理**：支持异步日志记录，不影响业务性能
+- 🎯 **条件化加载**：智能检测项目环境，按需加载组件
+- 🛡️ **安全友好**：支持JWT token解析，自动提取用户信息
 
-## 快速开始
+## 🚀 快速开始
 
-### 1. 引入依赖
+### 1. 添加依赖
 
 ```xml
 <dependency>
@@ -25,331 +23,190 @@
 </dependency>
 ```
 
-### 2. 启用日志功能
+### 2. 基础配置（可选）
 
 ```yaml
 diit:
   log:
-    enabled: true
+    enabled: true  # 启用日志功能（默认true）
     storage:
-      type: kafka  # 选择存储方式
+      type: kafka  # 存储类型：kafka, elasticsearch, database, http
+      async: true  # 异步发送（默认true）
+      batchSize: 100  # 批量发送大小
+      batchInterval: 1000  # 批量发送间隔（毫秒）
 ```
 
 ### 3. 使用注解
 
 #### 访问日志
-
 ```java
-@UserAccessLog(type = "登录", description = "用户登录系统")
-public APIResponse<LoginResponse> login(@RequestBody LoginRequest request) {
-    // 业务逻辑
+@RestController
+public class UserController {
+    
+    @UserAccessLog
+    @GetMapping("/users")
+    public List<User> getUsers() {
+        return userService.findAll();
+    }
 }
 ```
 
 #### 操作日志
-
 ```java
-@OperationLog(type = "新增", description = "创建用户", module = "用户管理")
-public APIResponse<User> createUser(@RequestBody CreateUserRequest request) {
-    // 业务逻辑
+@RestController
+public class UserController {
+    
+    @OperationLog(operation = "创建用户", description = "创建新用户账户")
+    @PostMapping("/users")
+    public User createUser(@RequestBody User user) {
+        return userService.save(user);
+    }
 }
 ```
 
-## 配置说明
-
-### 基础配置
-
-```yaml
-diit:
-  log:
-    enabled: true                    # 是否启用日志功能
-    storage:
-      type: kafka                    # 存储类型：kafka, elasticsearch, database, http
-      async: true                    # 是否异步发送
-      batch-size: 100               # 批量发送大小
-      batch-interval: 1000          # 批量发送间隔（毫秒）
-```
+## ⚙️ 详细配置
 
 ### Kafka配置
-
 ```yaml
 diit:
   log:
     kafka:
-      enabled: true                  # 是否启用Kafka
-      access-log-topic: access-log   # 访问日志Topic
-      operation-log-topic: operation-log  # 操作日志Topic
-      bootstrap-servers: localhost:9092   # 服务器地址
+      enabled: true
+      bootstrapServers: localhost:9092
+      accessLogTopic: access-log
+      operationLogTopic: operation-log
       producer:
-        retries: 3                   # 重试次数
-        batch-size: 16384            # 批量大小
-        linger-ms: 1                 # 延迟时间
-        buffer-memory: 33554432      # 缓冲区大小
+        acks: all
+        retries: 3
 ```
 
 ### Elasticsearch配置
-
 ```yaml
 diit:
   log:
     elasticsearch:
-      enabled: true                  # 是否启用Elasticsearch
-      hosts: localhost:9200          # 服务器地址
-      index-prefix: log              # 索引前缀
-      username: elastic              # 用户名
-      password:                      # 密码
-      connect-timeout: 5000          # 连接超时时间
-      read-timeout: 30000            # 读取超时时间
+      enabled: true
+      hosts: localhost:9200
+      indexPrefix: log-
+      username: elastic
+      password: password
+```
+
+### 数据库配置
+```yaml
+diit:
+  log:
+    database:
+      enabled: true
+      url: jdbc:mysql://localhost:3306/logs
+      username: root
+      password: password
+      tablePrefix: log_
 ```
 
 ### HTTP配置
-
 ```yaml
 diit:
   log:
     http:
-      enabled: true                  # 是否启用HTTP发送
-      access-log-endpoint: http://localhost:8080/api/logs/access
-      operation-log-endpoint: http://localhost:8080/api/logs/operation
-      connect-timeout: 5000          # 连接超时时间
-      read-timeout: 30000            # 读取超时时间
+      enabled: true
+      url: http://localhost:8080/api/logs
+      method: POST
+      headers:
+        Authorization: Bearer ${token}
 ```
 
-### 日志记录配置
+## 🏗️ 架构设计
 
-```yaml
-diit:
-  log:
-    record:
-      record-params: true            # 是否记录请求参数
-      record-response: false         # 是否记录响应结果
-      record-stack-trace: true       # 是否记录异常堆栈
-      record-ip-location: true       # 是否记录IP地理位置
-      record-user-agent: true        # 是否记录用户代理信息
-      sensitive-fields: password,token,secret  # 敏感字段（不记录）
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   注解层        │    │   切面层        │    │   发送器层      │
+│  @UserAccessLog │───▶│  UserAccessLog  │───▶│  LogSender      │
+│  @OperationLog  │    │  Aspect         │    │  Factory        │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │                       │
+                                ▼                       ▼
+                       ┌─────────────────┐    ┌─────────────────┐
+                       │   配置层        │    │   存储层        │
+                       │  LogProperties  │    │  Kafka/ES/DB    │
+                       │  AutoConfig     │    │  HTTP           │
+                       └─────────────────┘    └─────────────────┘
 ```
 
-## 注解说明
+## 🔧 自定义扩展
 
-### @UserAccessLog
-
-用于标记需要记录访问日志的方法。
-
+### 自定义日志发送器
 ```java
-@UserAccessLog(
-    type = "登录",                    // 访问类型
-    description = "用户登录系统",      // 访问描述
-    recordParams = false,             // 是否记录请求参数
-    recordResponse = false,           // 是否记录响应结果
-    recordStackTrace = true,          // 是否记录异常堆栈
-    module = "认证模块",              // 操作模块
-    target = "用户登录"               // 操作对象
-)
+@Component
+public class CustomLogSender implements LogSender {
+    
+    @Override
+    public void send(OperationLogEntity log) {
+        // 自定义发送逻辑
+    }
+    
+    @Override
+    public void send(UserAccessLogEntity log) {
+        // 自定义发送逻辑
+    }
+}
 ```
 
-### @OperationLog
-
-用于标记需要记录操作日志的方法。
-
+### 自定义日志实体
 ```java
-@OperationLog(
-    type = "新增",                    // 操作类型
-    description = "创建用户",          // 操作描述
-    recordParams = true,              // 是否记录方法参数
-    recordResponse = false,           // 是否记录响应结果
-    recordStackTrace = true,          // 是否记录异常堆栈
-    module = "用户管理",              // 操作模块
-    target = "用户信息",              // 操作对象
-    recordDataChange = true           // 是否记录数据变更（前后对比）
-)
+@Data
+public class CustomLogEntity extends OperationLogEntity {
+    private String customField;
+    // 其他自定义字段
+}
 ```
 
-## 日志字段说明
+## 📋 日志字段说明
 
 ### 访问日志字段
-
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| id | String | 日志ID |
-| username | String | 用户名 |
-| realName | String | 真实姓名 |
-| email | String | 邮箱 |
-| accessType | String | 访问类型 |
-| description | String | 访问描述 |
-| accessTime | String | 访问时间 |
-| accessTimestamp | LocalDateTime | 访问时间戳 |
-| clientIp | String | 客户端IP |
-| ipLocation | String | IP地理位置 |
-| browser | String | 浏览器信息 |
-| operatingSystem | String | 操作系统 |
-| deviceType | String | 设备类型 |
-| status | String | 访问状态 |
-| responseTime | Long | 响应时间 |
-| requestUri | String | 请求URI |
-| requestMethod | String | 请求方法 |
-| userAgent | String | 用户代理 |
-| sessionId | String | 会话ID |
-| createTime | LocalDateTime | 创建时间 |
+- `requestId`: 请求唯一标识
+- `userId`: 用户ID
+- `username`: 用户名
+- `ip`: 客户端IP
+- `userAgent`: 用户代理
+- `requestUrl`: 请求URL
+- `requestMethod`: 请求方法
+- `requestParams`: 请求参数
+- `responseStatus`: 响应状态
+- `responseTime`: 响应时间
+- `timestamp`: 时间戳
 
 ### 操作日志字段
+- `operation`: 操作名称
+- `description`: 操作描述
+- `userId`: 操作用户ID
+- `username`: 操作用户名
+- `ip`: 操作IP
+- `requestParams`: 请求参数
+- `result`: 操作结果
+- `timestamp`: 操作时间
 
-| 字段名 | 类型 | 说明 |
-|--------|------|------|
-| id | String | 日志ID |
-| username | String | 用户名 |
-| realName | String | 真实姓名 |
-| email | String | 邮箱 |
-| roleName | String | 角色名称 |
-| operationType | String | 操作类型 |
-| description | String | 操作描述 |
-| operationTime | String | 操作时间 |
-| operationTimestamp | LocalDateTime | 操作时间戳 |
-| clientIp | String | 客户端IP |
-| ipLocation | String | IP地理位置 |
-| browser | String | 浏览器信息 |
-| operatingSystem | String | 操作系统 |
-| deviceType | String | 设备类型 |
-| status | String | 操作状态 |
-| responseTime | Long | 响应时间 |
-| requestUri | String | 请求URI |
-| requestMethod | String | 请求方法 |
-| userAgent | String | 用户代理 |
-| sessionId | String | 会话ID |
-| module | String | 操作模块 |
-| target | String | 操作对象 |
-| beforeData | String | 操作前数据 |
-| afterData | String | 操作后数据 |
-| exceptionMessage | String | 异常信息 |
-| createTime | LocalDateTime | 创建时间 |
+## 🚨 注意事项
 
-## 扩展功能
+1. **性能考虑**：日志记录是异步的，但大量日志可能影响性能
+2. **存储配置**：确保配置的存储服务（Kafka、ES等）可用
+3. **敏感信息**：注意日志中不要记录敏感信息（密码、token等）
+4. **版本兼容**：支持Spring Boot 3.x版本
 
-### 自定义日志字段
-
-```java
-@UserAccessLog(type = "登录", description = "用户登录系统")
-@CustomLogField(key = "loginType", value = "password")
-public APIResponse<LoginResponse> login() {
-    // 业务逻辑
-}
-```
-
-### 日志过滤器
-
-```java
-@Component
-public class CustomLogFilter implements LogFilter {
-    @Override
-    public boolean shouldLog(LogContext context) {
-        // 自定义过滤逻辑
-        return true;
-    }
-}
-```
-
-### 日志转换器
-
-```java
-@Component
-public class CustomLogConverter implements LogConverter<CustomLog> {
-    @Override
-    public CustomLog convert(Object source) {
-        // 自定义转换逻辑
-        return new CustomLog();
-    }
-}
-```
-
-## 监控和管理
-
-### 健康检查
-
-Starter自动注册健康检查端点：
-
-```yaml
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,logs
-  endpoint:
-    health:
-      show-details: always
-```
-
-### 管理端点
-
-- `/actuator/health` - 健康检查
-- `/actuator/logs` - 日志管理
-
-## 环境适配
-
-### 开发环境
-
-```yaml
-spring:
-  profiles:
-    active: dev
-
-diit:
-  log:
-    storage:
-      type: kafka
-    kafka:
-      bootstrap-servers: localhost:9092
-```
-
-### 生产环境
-
-```yaml
-spring:
-  profiles:
-    active: prod
-
-diit:
-  log:
-    storage:
-      type: elasticsearch
-    elasticsearch:
-      hosts: elasticsearch:9200
-      username: elastic
-      password: ${ES_PASSWORD}
-```
-
-## 常见问题
-
-### Q: 如何禁用日志功能？
-
-A: 在配置文件中设置 `diit.log.enabled=false`
-
-### Q: 如何切换存储方式？
-
-A: 修改 `diit.log.storage.type` 配置项
-
-### Q: 如何自定义日志字段？
-
-A: 使用 `@CustomLogField` 注解或继承相关类
-
-### Q: 日志发送失败怎么办？
-
-A: 检查网络连接和配置信息，日志会自动重试
-
-## 版本兼容性
-
-- Spring Boot: 2.7.x, 3.x
-- Java: 8, 11, 17
-- Spring Framework: 5.3.x, 6.x
-
-## 贡献指南
+## 🤝 贡献
 
 欢迎提交Issue和Pull Request！
 
-## 许可证
+## 📄 许可证
 
 MIT License
 
-## 联系方式
+## 📞 联系方式
 
-- 作者: diit
-- 邮箱: support@diit.com
-- 项目地址: https://github.com/diit/common-log-starter
+如有问题，请通过以下方式联系：
+- 提交GitHub Issue
+- 发送邮件至：[your-email@example.com]
+
+---
+
+**Made with ❤️ by [Your Name]**
