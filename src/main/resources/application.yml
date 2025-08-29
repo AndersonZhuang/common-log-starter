@@ -1,0 +1,91 @@
+# 日志Starter默认配置
+diit:
+  log:
+    # 是否启用日志功能
+    enabled: true
+    
+    # 日志存储配置
+    storage:
+      # 存储类型：kafka, elasticsearch, database, http
+      type: kafka
+      # 是否异步发送
+      async: true
+      # 批量发送大小
+      batch-size: 100
+      # 批量发送间隔（毫秒）
+      batch-interval: 1000
+    
+    # Kafka配置
+    kafka:
+      # 是否启用Kafka
+      enabled: true
+      # 访问日志Topic
+      access-log-topic: access-log
+      # 操作日志Topic
+      operation-log-topic: operation-log
+      # 服务器地址
+      bootstrap-servers: localhost:9092
+      # 生产者配置
+      producer:
+        # 重试次数
+        retries: 3
+        # 批量大小
+        batch-size: 16384
+        # 延迟时间
+        linger-ms: 1
+        # 缓冲区大小
+        buffer-memory: 33554432
+    
+    # Elasticsearch配置
+    elasticsearch:
+      # 是否启用Elasticsearch
+      enabled: false
+      # 服务器地址
+      hosts: localhost:9200
+      # 索引前缀
+      index-prefix: log
+      # 用户名
+      username: elastic
+      # 密码
+      password: 
+      # 连接超时时间
+      connect-timeout: 5000
+      # 读取超时时间
+      read-timeout: 30000
+    
+    # 数据库配置
+    database:
+      # 是否启用数据库存储
+      enabled: false
+      # 表前缀
+      table-prefix: log_
+      # 是否自动创建表
+      auto-create-table: true
+    
+    # HTTP配置
+    http:
+      # 是否启用HTTP发送
+      enabled: false
+      # 访问日志端点
+      access-log-endpoint: http://localhost:8080/api/logs/access
+      # 操作日志端点
+      operation-log-endpoint: http://localhost:8080/api/logs/operation
+      # 连接超时时间
+      connect-timeout: 5000
+      # 读取超时时间
+      read-timeout: 30000
+    
+    # 日志记录配置
+    record:
+      # 是否记录请求参数
+      record-params: true
+      # 是否记录响应结果
+      record-response: false
+      # 是否记录异常堆栈
+      record-stack-trace: true
+      # 是否记录IP地理位置
+      record-ip-location: true
+      # 是否记录用户代理信息
+      record-user-agent: true
+      # 敏感字段（不记录）
+      sensitive-fields: password,token,secret

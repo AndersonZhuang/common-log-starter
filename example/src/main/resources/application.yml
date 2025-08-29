@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: common-log-starter-example
+
+# 日志Starter配置
+diit:
+  log:
+    # 启用日志功能
+    enabled: true
+    
+    # 使用Kafka存储
+    storage:
+      type: kafka
+      async: true
+    
+    # Kafka配置
+    kafka:
+      enabled: true
+      access-log-topic: access-log
+      operation-log-topic: operation-log
+      bootstrap-servers: localhost:9092
+      producer:
+        retries: 3
+        batch-size: 16384
+        linger-ms: 1
+        buffer-memory: 33554432
+
+# 日志配置
+logging:
+  level:
+    com.diit.common.log: DEBUG
+    root: INFO
