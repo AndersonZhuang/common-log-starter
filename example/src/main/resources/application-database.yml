@@ -1,10 +1,20 @@
-# Kafka测试环境配置
+# PostgreSQL数据库测试环境配置
 server:
   port: 8080
 
 spring:
   application:
     name: common-log-starter-example
+  datasource:
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      maximum-pool-size: 10
 
 # Knife4j配置
 knife4j:
@@ -17,35 +27,28 @@ knife4j:
   basic:
     enable: false
 
-# 日志Starter配置 - Kafka模式
+# 日志Starter配置 - Database模式
 diit:
   log:
     enabled: true
     storage:
-      type: kafka  # 使用Kafka存储
+      type: database  # 使用数据库存储
       async: true  # 异步发送
       batchSize: 100
       batchInterval: 1000
     
-    # Kafka配置
-    kafka:
+    # 数据库配置
+    database:
       enabled: true
-      accessLogTopic: access-log
-      operationLogTopic: operation-log
-      bootstrapServers: localhost:9092  # 本地Kafka地址
-      producer:
-        acks: all
-        retries: 3
-        batchSize: 16384
-        lingerMs: 1
-        bufferMemory: 33554432
+      tablePrefix: log_
+      autoCreateTable: false
     
     # 其他存储方式禁用
+    kafka:
+      enabled: false
     elasticsearch:
       enabled: false
     http:
-      enabled: false
-    database:
       enabled: false
     
     # 日志记录配置
@@ -60,7 +63,6 @@ logging:
   level:
     com.diit.common.log: DEBUG
     com.diit.example: DEBUG
-    org.apache.kafka: DEBUG
     root: INFO
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

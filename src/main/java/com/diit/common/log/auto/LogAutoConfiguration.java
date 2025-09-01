@@ -12,6 +12,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -26,6 +27,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 @EnableConfigurationProperties(LogProperties.class)
 @ConditionalOnProperty(prefix = "diit.log", name = "enabled", havingValue = "true", matchIfMissing = true)
 @Import({LogConfiguration.class})
+@ComponentScan(basePackages = "com.diit.common.log")
 public class LogAutoConfiguration {
     
     /**
@@ -34,7 +36,9 @@ public class LogAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public ObjectMapper objectMapper() {
-        return new ObjectMapper();
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.findAndRegisterModules();
+        return mapper;
     }
     
     /**
@@ -69,19 +73,14 @@ public class LogAutoConfiguration {
     
     /**
      * 配置Kafka相关Bean（条件化）
+     * 注意：这个配置类已经被LogConfiguration替代，这里保留是为了向后兼容
      */
     @Configuration
     @ConditionalOnClass(KafkaTemplate.class)
     @ConditionalOnProperty(prefix = "diit.log.kafka", name = "enabled", havingValue = "true")
     static class KafkaConfiguration {
         
-        @Bean
-        @ConditionalOnMissingBean
-        public KafkaTemplate<String, Object> kafkaTemplate() {
-            log.info("初始化KafkaTemplate");
-            // 这里需要具体的Kafka配置
-            // 实际使用时应该由使用者提供配置
-            return null;
-        }
+        // 这个Bean现在由LogConfiguration提供，这里不再重复定义
+        // 避免与LogConfiguration中的配置冲突
     }
 }

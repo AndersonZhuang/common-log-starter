@@ -2,6 +2,7 @@ package com.diit.example;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 /**
  * 示例应用主类
@@ -9,6 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author diit
  */
 @SpringBootApplication
+@EnableAspectJAutoProxy
 public class ExampleApplication {
     
     public static void main(String[] args) {

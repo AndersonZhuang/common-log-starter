@@ -42,7 +42,7 @@ public class LogConfiguration {
         configProps.put("buffer.memory", producer.getBufferMemory());
         
         // 可靠性配置
-        configProps.put("acks", "1");
+        configProps.put("acks", "all");
         configProps.put("enable.idempotence", "true");
         
         log.info("配置Kafka生产者工厂: {}", configProps);

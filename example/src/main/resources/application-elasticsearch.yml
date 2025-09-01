@@ -1,10 +1,12 @@
-# Kafka测试环境配置
+# Elasticsearch测试环境配置
 server:
   port: 8080
 
 spring:
   application:
     name: common-log-starter-example
+  elasticsearch:
+    uris: http://localhost:9200
 
 # Knife4j配置
 knife4j:
@@ -17,31 +19,26 @@ knife4j:
   basic:
     enable: false
 
-# 日志Starter配置 - Kafka模式
+# 日志Starter配置 - Elasticsearch模式
 diit:
   log:
     enabled: true
     storage:
-      type: kafka  # 使用Kafka存储
+      type: elasticsearch  # 使用Elasticsearch存储
       async: true  # 异步发送
       batchSize: 100
       batchInterval: 1000
     
-    # Kafka配置
-    kafka:
+    # Elasticsearch配置
+    elasticsearch:
       enabled: true
-      accessLogTopic: access-log
-      operationLogTopic: operation-log
-      bootstrapServers: localhost:9092  # 本地Kafka地址
-      producer:
-        acks: all
-        retries: 3
-        batchSize: 16384
-        lingerMs: 1
-        bufferMemory: 33554432
+      hosts: localhost:9200
+      indexPrefix: common-log
+      connectTimeout: 5000
+      readTimeout: 30000
     
     # 其他存储方式禁用
-    elasticsearch:
+    kafka:
       enabled: false
     http:
       enabled: false
@@ -60,7 +57,6 @@ logging:
   level:
     com.diit.common.log: DEBUG
     com.diit.example: DEBUG
-    org.apache.kafka: DEBUG
     root: INFO
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
