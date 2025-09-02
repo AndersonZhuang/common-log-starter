@@ -195,6 +195,12 @@ public class LogProperties {
         private String operationLogEndpoint = "http://localhost:8080/api/logs/operation";
         
         /**
+         * 通用日志端点（用于自定义实体类）
+         * 自定义实体类会发送到: {genericEndpoint}/{entityClassName}
+         */
+        private String genericEndpoint = "http://localhost:8080/api/logs/generic";
+        
+        /**
          * 连接超时时间
          */
         private int connectTimeout = 5000;

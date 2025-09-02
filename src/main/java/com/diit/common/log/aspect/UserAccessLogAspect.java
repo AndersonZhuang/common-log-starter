@@ -4,7 +4,6 @@ import com.diit.common.log.annotation.UserAccessLog;
 import com.diit.common.log.entity.UserAccessLogEntity;
 import com.diit.common.log.sender.LogSenderFactory;
 import com.diit.common.log.utils.LogWebUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -31,9 +30,6 @@ public class UserAccessLogAspect {
     
     @Autowired
     private LogSenderFactory logSenderFactory;
-    
-    @Autowired
-    private ObjectMapper objectMapper;
     
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss");
     

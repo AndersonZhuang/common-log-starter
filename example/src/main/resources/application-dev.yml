@@ -1,32 +1,47 @@
 # 开发环境配置
 server:
-  port: 8080
+  port: 8088
 
 spring:
   application:
     name: common-log-starter-example
+  # 禁用不需要的自动配置
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 
 # 开发环境日志配置
 diit:
   log:
     enabled: true
     storage:
-      type: http  # 开发环境使用HTTP方式，便于测试
-      async: false  # 开发环境同步发送，便于调试
+      type: kafka  # 开发环境使用Kafka方式，便于测试
+      async: true  # 开发环境异步发送，提高性能
       batchSize: 10
       batchInterval: 500
     
-    # HTTP配置（开发环境）
+    # HTTP配置（开发环境禁用）
     http:
-      enabled: true
+      enabled: false
       url: http://localhost:8080/api/logs
       method: POST
       headers:
         Content-Type: application/json
     
-    # Kafka配置（开发环境禁用）
+    # Kafka配置（开发环境启用）
     kafka:
-      enabled: false
+      enabled: true
+      bootstrapServers: localhost:9092
+      producer:
+        acks: all
+        retries: 3
+        batchSize: 16384
+        lingerMs: 1
+        bufferMemory: 33554432
     
     # Elasticsearch配置（开发环境禁用）
     elasticsearch:

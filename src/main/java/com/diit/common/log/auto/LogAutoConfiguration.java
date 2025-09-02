@@ -1,5 +1,6 @@
 package com.diit.common.log.auto;
 
+import com.diit.common.log.aspect.GenericLogAspect;
 import com.diit.common.log.aspect.OperationLogAspect;
 import com.diit.common.log.aspect.UserAccessLogAspect;
 import com.diit.common.log.config.LogConfiguration;
@@ -25,7 +26,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 @Slf4j
 @Configuration
 @EnableConfigurationProperties(LogProperties.class)
-@ConditionalOnProperty(prefix = "diit.log", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "common.log", name = "enabled", havingValue = "true", matchIfMissing = true)
 @Import({LogConfiguration.class})
 @ComponentScan(basePackages = "com.diit.common.log")
 public class LogAutoConfiguration {
@@ -39,6 +40,16 @@ public class LogAutoConfiguration {
         ObjectMapper mapper = new ObjectMapper();
         mapper.findAndRegisterModules();
         return mapper;
+    }
+    
+    /**
+     * 配置通用日志切面
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public GenericLogAspect genericLogAspect() {
+        log.info("初始化通用日志切面");
+        return new GenericLogAspect();
     }
     
     /**
@@ -77,7 +88,7 @@ public class LogAutoConfiguration {
      */
     @Configuration
     @ConditionalOnClass(KafkaTemplate.class)
-    @ConditionalOnProperty(prefix = "diit.log.kafka", name = "enabled", havingValue = "true")
+    @ConditionalOnProperty(prefix = "common.log.sender.kafka", name = "enabled", havingValue = "true")
     static class KafkaConfiguration {
         
         // 这个Bean现在由LogConfiguration提供，这里不再重复定义
