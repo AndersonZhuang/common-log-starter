@@ -1,8 +1,6 @@
 package com.diit.common.log.service;
 
 import com.diit.common.log.entity.BaseLogEntity;
-import com.diit.common.log.exception.LogResultCode;
-import com.diit.common.log.exception.LogSenderException;
 import com.diit.common.log.sender.GenericLogSender;
 import com.diit.common.log.sender.LogSenderFactory;
 import lombok.extern.slf4j.Slf4j;
@@ -63,25 +61,23 @@ public class LogSenderService {
         // 将任意对象转换为BaseLogEntity
         BaseLogEntity baseLogEntity = convertToBaseLogEntity(logEntity);
         if (baseLogEntity == null) {
-            throw new LogSenderException(LogResultCode.ENTITY_SERIALIZATION_FAILED, 
-                String.format("无法转换日志实体: %s", logEntity.getClass().getSimpleName()));
+            log.warn("无法转换日志实体: {}", logEntity.getClass().getSimpleName());
+            return;
         }
         
         GenericLogSender<BaseLogEntity> sender = findSender(baseLogEntity, senderType);
-        if (sender == null) {
-            throw new LogSenderException(LogResultCode.SENDER_NOT_CONFIGURED, 
-                String.format("未找到合适的日志发送器: senderType=%s, entityClass=%s", 
-                    senderType, logEntity.getClass().getSimpleName()));
-        }
-        
-        try {
-            sender.send(baseLogEntity);
-            log.debug("日志发送成功: senderType={}, entityClass={}", 
-                     senderType, logEntity.getClass().getSimpleName());
-        } catch (Exception e) {
-            log.error("日志发送失败: senderType={}, entityClass={}", 
-                     senderType, logEntity.getClass().getSimpleName(), e);
-            throw e; // 重新抛出异常，不要静默处理
+        if (sender != null) {
+            try {
+                sender.send(baseLogEntity);
+                log.debug("日志发送成功: senderType={}, entityClass={}", 
+                         senderType, logEntity.getClass().getSimpleName());
+            } catch (Exception e) {
+                log.error("日志发送失败: senderType={}, entityClass={}", 
+                         senderType, logEntity.getClass().getSimpleName(), e);
+            }
+        } else {
+            log.warn("未找到合适的日志发送器: senderType={}, entityClass={}", 
+                    senderType, logEntity.getClass().getSimpleName());
         }
     }
     
@@ -95,25 +91,23 @@ public class LogSenderService {
         // 将任意对象转换为BaseLogEntity
         BaseLogEntity baseLogEntity = convertToBaseLogEntity(logEntity);
         if (baseLogEntity == null) {
-            throw new LogSenderException(LogResultCode.ENTITY_SERIALIZATION_FAILED, 
-                String.format("无法转换日志实体: %s", logEntity.getClass().getSimpleName()));
+            log.warn("无法转换日志实体: {}", logEntity.getClass().getSimpleName());
+            return;
         }
         
         GenericLogSender<BaseLogEntity> sender = findSender(baseLogEntity, senderType);
-        if (sender == null) {
-            throw new LogSenderException(LogResultCode.SENDER_NOT_CONFIGURED, 
-                String.format("未找到合适的日志发送器: senderType=%s, entityClass=%s", 
-                    senderType, logEntity.getClass().getSimpleName()));
-        }
-        
-        try {
-            sender.sendAsync(baseLogEntity);
-            log.debug("异步日志发送成功: senderType={}, entityClass={}", 
-                     senderType, logEntity.getClass().getSimpleName());
-        } catch (Exception e) {
-            log.error("异步日志发送失败: senderType={}, entityClass={}", 
-                     senderType, logEntity.getClass().getSimpleName(), e);
-            throw e; // 重新抛出异常，不要静默处理
+        if (sender != null) {
+            try {
+                sender.sendAsync(baseLogEntity);
+                log.debug("异步日志发送成功: senderType={}, entityClass={}", 
+                         senderType, logEntity.getClass().getSimpleName());
+            } catch (Exception e) {
+                log.error("异步日志发送失败: senderType={}, entityClass={}", 
+                         senderType, logEntity.getClass().getSimpleName(), e);
+            }
+        } else {
+            log.warn("未找到合适的日志发送器: senderType={}, entityClass={}", 
+                    senderType, logEntity.getClass().getSimpleName());
         }
     }
     
@@ -131,18 +125,16 @@ public class LogSenderService {
         
         BaseLogEntity firstEntity = logEntities.get(0);
         GenericLogSender<BaseLogEntity> sender = findSender(firstEntity, senderType);
-        if (sender == null) {
-            throw new LogSenderException(LogResultCode.SENDER_NOT_CONFIGURED, 
-                String.format("未找到合适的日志发送器: senderType=%s, entityClass=%s", 
-                    senderType, firstEntity.getClass().getSimpleName()));
-        }
-        
-        try {
-            sender.sendBatch((List<BaseLogEntity>) logEntities);
-            log.debug("批量日志发送成功: senderType={}, count={}", senderType, logEntities.size());
-        } catch (Exception e) {
-            log.error("批量日志发送失败: senderType={}, count={}", senderType, logEntities.size(), e);
-            throw e; // 重新抛出异常，不要静默处理
+        if (sender != null) {
+            try {
+                sender.sendBatch((List<BaseLogEntity>) logEntities);
+                log.debug("批量日志发送成功: senderType={}, count={}", senderType, logEntities.size());
+            } catch (Exception e) {
+                log.error("批量日志发送失败: senderType={}, count={}", senderType, logEntities.size(), e);
+            }
+        } else {
+            log.warn("未找到合适的日志发送器: senderType={}, entityClass={}", 
+                    senderType, firstEntity.getClass().getSimpleName());
         }
     }
     
@@ -229,14 +221,20 @@ public class LogSenderService {
                         case "id":
                             baseLogEntity.setId((String) value);
                             break;
-                        case "timestamp":
-                            baseLogEntity.setTimestamp((java.time.LocalDateTime) value);
+                        case "username":
+                            baseLogEntity.setUsername((String) value);
                             break;
-                        case "content":
-                            baseLogEntity.setContent((String) value);
+                        case "description":
+                            baseLogEntity.setDescription((String) value);
                             break;
-                        case "level":
-                            baseLogEntity.setLevel((org.springframework.boot.logging.LogLevel) value);
+                        case "clientIp":
+                            baseLogEntity.setClientIp((String) value);
+                            break;
+                        case "status":
+                            baseLogEntity.setStatus((String) value);
+                            break;
+                        case "createTime":
+                            baseLogEntity.setCreateTime((java.time.LocalDateTime) value);
                             break;
                     }
                 } catch (Exception e) {

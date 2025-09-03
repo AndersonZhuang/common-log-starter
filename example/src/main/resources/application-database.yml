@@ -1,14 +1,14 @@
 # PostgreSQL数据库测试环境配置
 server:
-  port: 8088
+  port: 8080
 
 spring:
   application:
     name: common-log-starter-example
   datasource:
-    url: jdbc:postgresql://127.0.0.1:5433/log_test
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://localhost:5433/logdb
+    username: loguser
+    password: logpass123
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-timeout: 30000
@@ -41,7 +41,7 @@ diit:
     database:
       enabled: true
       tablePrefix: log_
-      autoCreateTable: true
+      autoCreateTable: false
     
     # 其他存储方式禁用
     kafka:

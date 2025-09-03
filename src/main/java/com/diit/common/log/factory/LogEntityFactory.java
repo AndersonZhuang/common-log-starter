@@ -38,9 +38,6 @@ public class LogEntityFactory {
             // 填充基础字段
             fillBaseFields(logEntity, description);
             
-            // 尝试从当前请求中提取自定义字段
-            extractCustomFieldsFromRequest(logEntity);
-            
             return logEntity;
         } catch (Exception e) {
             log.error("创建日志实体失败: entityClass={}, description={}", 
@@ -59,44 +56,35 @@ public class LogEntityFactory {
         // 生成ID
         logEntity.setId(generateLogId());
         
-        // 设置时间戳
-        logEntity.setTimestamp(LocalDateTime.now());
+        // 设置描述
+        logEntity.setDescription(description);
         
-        // 设置内容
-        logEntity.setContent(description);
+        // 设置创建时间
+        logEntity.setCreateTime(LocalDateTime.now());
         
-        // 设置日志级别
-        logEntity.setLevel(org.springframework.boot.logging.LogLevel.INFO);
-        
-        // 从上下文获取用户信息并设置到自定义字段
+        // 从上下文获取用户信息
         try {
             String username = LogContextUtils.getCurrentUsername();
-            setFieldIfExists(logEntity.getClass(), logEntity, "username", username);
+            logEntity.setUsername(username);
         } catch (Exception e) {
             log.debug("获取用户名失败，将设置为匿名用户", e);
-            setFieldIfExists(logEntity.getClass(), logEntity, "username", "anonymous");
+            logEntity.setUsername("anonymous");
         }
         
-        // 从请求中获取IP地址并设置到自定义字段
+        // 从请求中获取IP地址
         try {
             HttpServletRequest request = LogContextUtils.getCurrentRequest();
             if (request != null) {
                 String clientIp = LogContextUtils.getClientIpAddress(request);
-                setFieldIfExists(logEntity.getClass(), logEntity, "clientIp", clientIp);
+                logEntity.setClientIp(clientIp);
             }
         } catch (Exception e) {
             log.debug("获取客户端IP失败", e);
-            setFieldIfExists(logEntity.getClass(), logEntity, "clientIp", "unknown");
+            logEntity.setClientIp("unknown");
         }
         
         // 默认设置为成功状态，后续可能会被覆盖
-        setFieldIfExists(logEntity.getClass(), logEntity, "status", "SUCCESS");
-        
-        // 设置创建时间到自定义字段
-        setFieldIfExists(logEntity.getClass(), logEntity, "createTime", LocalDateTime.now());
-        
-        // 设置描述到自定义字段
-        setFieldIfExists(logEntity.getClass(), logEntity, "description", description);
+        logEntity.setStatus("SUCCESS");
     }
     
     /**
@@ -116,86 +104,11 @@ public class LogEntityFactory {
      * @param target 目标实体
      */
     public void copyBaseFields(BaseLogEntity source, BaseLogEntity target) {
-        // 复制基础字段
         target.setId(source.getId());
-        target.setTimestamp(source.getTimestamp());
-        target.setContent(source.getContent());
-        target.setLevel(source.getLevel());
-        
-        // 复制扩展字段（如果存在）
-        copyFieldIfExists(source, target, "username");
-        copyFieldIfExists(source, target, "description");
-        copyFieldIfExists(source, target, "clientIp");
-        copyFieldIfExists(source, target, "status");
-        copyFieldIfExists(source, target, "createTime");
-    }
-    
-    /**
-     * 如果字段存在则复制
-     */
-    private void copyFieldIfExists(BaseLogEntity source, BaseLogEntity target, String fieldName) {
-        try {
-            java.lang.reflect.Field sourceField = source.getClass().getDeclaredField(fieldName);
-            java.lang.reflect.Field targetField = target.getClass().getDeclaredField(fieldName);
-            
-            sourceField.setAccessible(true);
-            targetField.setAccessible(true);
-            
-            Object value = sourceField.get(source);
-            if (value != null) {
-                targetField.set(target, value);
-            }
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            // 字段不存在或无法访问，忽略
-            log.debug("复制字段 {} 失败: {}", fieldName, e.getMessage());
-        }
-    }
-    
-    /**
-     * 从当前请求中提取自定义字段
-     */
-    private void extractCustomFieldsFromRequest(BaseLogEntity logEntity) {
-        try {
-            HttpServletRequest request = LogContextUtils.getCurrentRequest();
-            if (request == null) {
-                return;
-            }
-            
-            // 获取请求参数
-            java.util.Map<String, String[]> parameterMap = request.getParameterMap();
-            Class<?> entityClass = logEntity.getClass();
-            
-            // 遍历请求参数，尝试设置对应的实体字段
-            for (java.util.Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
-                String paramName = entry.getKey();
-                String[] paramValues = entry.getValue();
-                
-                if (paramValues != null && paramValues.length > 0) {
-                    String paramValue = paramValues[0]; // 取第一个值
-                    
-                    // 尝试设置字段值
-                    setFieldIfExists(entityClass, logEntity, paramName, paramValue);
-                }
-            }
-            
-        } catch (Exception e) {
-            log.debug("从请求中提取自定义字段失败", e);
-        }
-    }
-    
-
-    
-    /**
-     * 如果字段存在则设置值
-     */
-    private boolean setFieldIfExists(Class<?> entityClass, Object entity, String fieldName, Object value) {
-        try {
-            java.lang.reflect.Field field = entityClass.getDeclaredField(fieldName);
-            field.setAccessible(true);
-            field.set(entity, value);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+        target.setUsername(source.getUsername());
+        target.setDescription(source.getDescription());
+        target.setClientIp(source.getClientIp());
+        target.setStatus(source.getStatus());
+        target.setCreateTime(source.getCreateTime());
     }
 }
