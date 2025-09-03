@@ -1,6 +1,9 @@
 package com.diit.common.log.entity;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.springframework.boot.logging.LogLevel;
 
 import java.time.LocalDateTime;
@@ -22,6 +25,9 @@ import java.time.LocalDateTime;
  * @author diit
  */
 @Data
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
 public abstract class BaseLogEntity {
     
     /** 主键ID */
@@ -33,7 +39,7 @@ public abstract class BaseLogEntity {
     /** 日志内容*/
     private String content;
 
-    /** 日志内容*/
+    /** 日志级别*/
     private LogLevel level;
 
 }

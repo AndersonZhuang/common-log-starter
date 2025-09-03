@@ -1,6 +1,8 @@
 package com.diit.common.log.sender.impl;
 
 import com.diit.common.log.entity.BaseLogEntity;
+import com.diit.common.log.exception.LogResultCode;
+import com.diit.common.log.exception.LogSenderException;
 import com.diit.common.log.sender.GenericLogSender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -94,41 +96,40 @@ public class UnifiedElasticsearchSender implements GenericLogSender<BaseLogEntit
             // 构建ES文档（包含所有字段，包括自定义字段）
             String jsonDocument = objectMapper.writeValueAsString(logEntity);
             
-            if (restTemplate != null) {
-                // 真实发送到Elasticsearch
-                // 使用POST方法创建文档，让Elasticsearch自动生成ID
-                String url = String.format("%s/%s/_doc", ES_BASE_URL, indexName);
-                
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_JSON);
-                HttpEntity<String> request = new HttpEntity<>(jsonDocument, headers);
-                
-                try {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> response = restTemplate.exchange(
-                            url, HttpMethod.POST, request, Map.class).getBody();
-                    
-                    log.info("✅ Elasticsearch日志发送成功 - Index: {}, ID: {}", indexName, documentId);
-                    log.debug("   Response: {}", response);
-                    
-                } catch (Exception e) {
-                    log.error("❌ Elasticsearch日志发送失败 - Index: {}, ID: {}, Error: {}", 
-                             indexName, documentId, e.getMessage());
-                }
-                
-            } else {
-                // 模拟模式
-                log.warn("⚠️ RestTemplate不可用，使用模拟模式:");
-                log.info("   Index: {}", indexName);
-                log.info("   Document ID: {}", documentId);
-                log.info("   实体类型: {}", logEntity.getClass().getSimpleName());
-                log.info("   自定义字段: {}", hasCustomFields(logEntity) ? "是" : "否");
-                log.info("   Document: {}", jsonDocument);
+            if (restTemplate == null) {
+                throw new LogSenderException(LogResultCode.ES_SENDER_CONFIG_ERROR, 
+                    "RestTemplate未配置，请检查配置或确保Spring容器中存在RestTemplate Bean");
             }
             
+            // 发送到Elasticsearch
+            String url = String.format("%s/%s/_doc", ES_BASE_URL, indexName);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> request = new HttpEntity<>(jsonDocument, headers);
+            
+            try {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> response = restTemplate.exchange(
+                        url, HttpMethod.POST, request, Map.class).getBody();
+                
+                log.info("✅ Elasticsearch日志发送成功 - Index: {}, ID: {}", indexName, documentId);
+                log.debug("   Response: {}", response);
+                
+            } catch (Exception e) {
+                log.error("❌ Elasticsearch日志发送失败 - Index: {}, ID: {}, Error: {}", 
+                         indexName, documentId, e.getMessage());
+                throw new LogSenderException(LogResultCode.ES_DOCUMENT_INSERT_FAILED, 
+                    "文档插入失败: " + e.getMessage(), e);
+            }
+            
+        } catch (LogSenderException e) {
+            // 重新抛出日志发送器异常
+            throw e;
         } catch (Exception e) {
             log.error("Elasticsearch发送日志失败", e);
-            throw new RuntimeException("Failed to send log to Elasticsearch", e);
+            throw new LogSenderException(LogResultCode.ES_CONNECTION_FAILED, 
+                "Elasticsearch发送日志失败", e);
         }
     }
     

@@ -1,16 +1,25 @@
 package com.diit.common.log.sender.impl;
 
+import com.diit.common.log.database.LogTableManager;
+import com.diit.common.log.database.PresetLogTableManager;
 import com.diit.common.log.entity.BaseLogEntity;
+import com.diit.common.log.entity.OperationLogEntity;
+import com.diit.common.log.entity.UserAccessLogEntity;
+import com.diit.common.log.exception.LogResultCode;
+import com.diit.common.log.exception.LogSenderException;
 import com.diit.common.log.sender.GenericLogSender;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Scope;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+
+import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,13 +37,11 @@ public class UnifiedDatabaseSender implements GenericLogSender<BaseLogEntity> {
     @Autowired(required = false)
     private JdbcTemplate jdbcTemplate;
     
-    // 基础字段的插入SQL
-    private static final String BASE_INSERT_SQL = """
-        INSERT INTO common_logs (id, username, description, client_ip, status, create_time, 
-                                module, target, operation_type, exception_message, 
-                                entity_type, custom_fields_json) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """;
+    @Autowired(required = false)
+    private LogTableManager logTableManager;
+    
+    @Autowired(required = false)
+    private PresetLogTableManager presetLogTableManager;
     
     @Override
     public void send(BaseLogEntity logEntity) {
@@ -60,7 +67,8 @@ public class UnifiedDatabaseSender implements GenericLogSender<BaseLogEntity> {
             }
         } catch (Exception e) {
             log.error("批量保存日志到数据库失败", e);
-            throw new RuntimeException("Failed to batch save logs to database", e);
+            throw new LogSenderException(LogResultCode.DB_INSERT_FAILED, 
+                "批量保存失败", e);
         }
     }
     
@@ -76,108 +84,249 @@ public class UnifiedDatabaseSender implements GenericLogSender<BaseLogEntity> {
     }
     
     /**
+     * 检查是否为预设实体类
+     */
+    public boolean isPresetEntity(Class<?> entityClass) {
+        return entityClass == OperationLogEntity.class || 
+               entityClass == UserAccessLogEntity.class;
+    }
+    
+    /**
      * 统一的日志发送方法
      * 支持任何继承自BaseLogEntity的实体类，包括自定义字段
+     * 自动创建对应的数据库表
      */
     private void sendGenericLog(BaseLogEntity logEntity) {
         try {
-            if (jdbcTemplate != null) {
-                // 真实插入到数据库
-                int rowsAffected = insertGenericLog(logEntity);
-                
-                if (rowsAffected > 0) {
-                    log.info("✅ 数据库日志保存成功 - 插入记录ID: {}, 类型: {}", 
-                            logEntity.getId(), logEntity.getClass().getSimpleName());
-                    log.debug("   自定义字段: {}", hasCustomFields(logEntity) ? "是" : "否");
-                } else {
-                    log.warn("⚠️ 数据库日志插入未生效 - ID: {}", logEntity.getId());
-                }
-                
-            } else {
-                // 模拟模式
-                log.warn("⚠️ JdbcTemplate不可用，使用模拟模式:");
-                log.info("   实体类型: {}", logEntity.getClass().getSimpleName());
-                log.info("   自定义字段: {}", hasCustomFields(logEntity) ? "是" : "否");
-                log.info("   ID: {}, User: {}, Status: {}", 
-                        logEntity.getId(), logEntity.getUsername(), logEntity.getStatus());
+            if (jdbcTemplate == null) {
+                throw new LogSenderException(LogResultCode.DB_SENDER_CONFIG_ERROR, 
+                    "JdbcTemplate未配置，请检查数据源配置");
             }
             
+            // 检查是否为预设实体类
+            if (isPresetEntity(logEntity.getClass())) {
+                sendPresetEntity(logEntity);
+            } else {
+                sendBaseEntity(logEntity);
+            }
+            
+        } catch (LogSenderException e) {
+            throw e;
         } catch (Exception e) {
             log.error("数据库保存日志失败 - ID: {}", logEntity.getId(), e);
-            throw new RuntimeException("Failed to save log to database", e);
+            throw new LogSenderException(LogResultCode.DB_INSERT_FAILED, 
+                "数据库保存日志失败", e);
         }
     }
     
     /**
-     * 插入通用日志（支持自定义字段）
+     * 发送预设实体类日志
      */
-    private int insertGenericLog(BaseLogEntity logEntity) {
-        // 获取自定义字段的JSON表示
-        String customFieldsJson = extractCustomFieldsAsJson(logEntity);
+    private void sendPresetEntity(BaseLogEntity logEntity) {
+        if (presetLogTableManager == null) {
+            throw new LogSenderException(LogResultCode.DB_SENDER_CONFIG_ERROR, 
+                "PresetLogTableManager未配置，请检查配置");
+        }
         
-        return jdbcTemplate.update(BASE_INSERT_SQL,
-                logEntity.getId(),
-                logEntity.getUsername(),
-                logEntity.getDescription(),
-                logEntity.getClientIp(),
-                logEntity.getStatus(),
-                logEntity.getCreateTime() != null ? 
-                    Timestamp.valueOf(logEntity.getCreateTime()) : null,
-                getFieldValue(logEntity, "module"),
-                getFieldValue(logEntity, "target"),
-                getFieldValue(logEntity, "operationType"),
-                getFieldValue(logEntity, "exceptionMessage"),
-                logEntity.getClass().getSimpleName(), // 实体类型
-                customFieldsJson // 自定义字段JSON
-        );
+        // 确保表存在，如果不存在则创建
+        String tableName = presetLogTableManager.ensureTableExists(logEntity.getClass());
+        if (tableName == null) {
+            throw new LogSenderException(LogResultCode.DB_SENDER_CONFIG_ERROR, 
+                "无法确定预设表名");
+        }
+        
+        // 获取表信息和插入SQL
+        PresetLogTableManager.TableInfo tableInfo = presetLogTableManager.getTableInfo(tableName, logEntity.getClass());
+        
+        // 动态插入数据
+        int rowsAffected = insertPresetEntityData(logEntity, tableInfo);
+        
+        if (rowsAffected > 0) {
+            log.info("✅ 预设实体数据库日志保存成功 - 表: {}, ID: {}, 类型: {}", 
+                    tableName, logEntity.getId(), logEntity.getClass().getSimpleName());
+        } else {
+            log.warn("⚠️ 预设实体数据库日志插入未生效 - 表: {}, ID: {}", tableName, logEntity.getId());
+        }
     }
     
     /**
-     * 提取自定义字段为JSON字符串
+     * 发送基础实体类日志
      */
-    private String extractCustomFieldsAsJson(BaseLogEntity logEntity) {
+    private void sendBaseEntity(BaseLogEntity logEntity) {
+        if (logTableManager == null) {
+            throw new LogSenderException(LogResultCode.DB_SENDER_CONFIG_ERROR, 
+                "LogTableManager未配置，请检查配置");
+        }
+        
+        // 确保表存在，如果不存在则创建
+        String tableName = logTableManager.ensureTableExists(logEntity.getClass());
+        if (tableName == null) {
+            throw new LogSenderException(LogResultCode.DB_SENDER_CONFIG_ERROR, 
+                "无法确定表名");
+        }
+        
+        // 获取表信息和插入SQL
+        LogTableManager.TableInfo tableInfo = logTableManager.getTableInfo(tableName, logEntity.getClass());
+        
+        // 动态插入数据
+        int rowsAffected = insertEntityData(logEntity, tableInfo);
+        
+        if (rowsAffected > 0) {
+            log.info("✅ 数据库日志保存成功 - 表: {}, ID: {}, 类型: {}", 
+                    tableName, logEntity.getId(), logEntity.getClass().getSimpleName());
+            log.debug("   自定义字段: {}", hasCustomFields(logEntity) ? "是" : "否");
+        } else {
+            log.warn("⚠️ 数据库日志插入未生效 - 表: {}, ID: {}", tableName, logEntity.getId());
+        }
+    }
+    
+    /**
+     * 动态插入实体数据
+     */
+    private int insertEntityData(BaseLogEntity logEntity, LogTableManager.TableInfo tableInfo) {
+        List<Object> values = new ArrayList<>();
+        
+        // 按照表字段顺序准备参数值
+        for (String fieldName : tableInfo.getFields()) {
+            Object value = getEntityFieldValue(logEntity, fieldName);
+            values.add(value);
+        }
+        
+        log.debug("插入SQL: {}", tableInfo.getInsertSql());
+        log.debug("参数值: {}", values);
+        
+        return jdbcTemplate.update(tableInfo.getInsertSql(), values.toArray());
+    }
+    
+    /**
+     * 动态插入预设实体数据
+     */
+    private int insertPresetEntityData(BaseLogEntity logEntity, PresetLogTableManager.TableInfo tableInfo) {
+        List<Object> values = new ArrayList<>();
+        
+        // 按照表字段顺序准备参数值
+        for (String fieldName : tableInfo.getFields()) {
+            Object value = getPresetEntityFieldValue(logEntity, fieldName);
+            values.add(value);
+        }
+        
+        log.debug("预设实体插入SQL: {}", tableInfo.getInsertSql());
+        log.debug("预设实体参数值: {}", values);
+        
+        return jdbcTemplate.update(tableInfo.getInsertSql(), values.toArray());
+    }
+    
+    /**
+     * 获取实体字段值（支持基础字段和自定义字段）
+     */
+    private Object getEntityFieldValue(BaseLogEntity logEntity, String fieldName) {
         try {
-            // 使用反射获取所有字段
-            java.lang.reflect.Field[] fields = logEntity.getClass().getDeclaredFields();
-            java.util.Map<String, Object> customFields = new java.util.HashMap<>();
+            // 处理基础字段
+            switch (fieldName.toLowerCase()) {
+                case "id":
+                    return logEntity.getId();
+                case "timestamp":
+                    return logEntity.getTimestamp() != null ? 
+                           Timestamp.valueOf(logEntity.getTimestamp()) : null;
+                case "content":
+                    return logEntity.getContent();
+                case "level":
+                    return logEntity.getLevel() != null ? 
+                           logEntity.getLevel().toString() : null;
+                case "created_at":
+                case "updated_at":
+                    return Timestamp.valueOf(LocalDateTime.now());
+            }
             
-            for (java.lang.reflect.Field field : fields) {
-                // 跳过BaseLogEntity中的基础字段
-                if (isBaseField(field.getName())) {
-                    continue;
-                }
-                
-                field.setAccessible(true);
-                Object value = field.get(logEntity);
-                if (value != null) {
-                    customFields.put(field.getName(), value);
+            // 尝试通过反射获取字段值
+            Object fieldValue = getFieldValue(logEntity, fieldName);
+            
+            // 特殊类型处理
+            if (fieldValue instanceof LocalDateTime) {
+                return Timestamp.valueOf((LocalDateTime) fieldValue);
+            } else if (fieldValue instanceof java.time.LocalDate) {
+                return java.sql.Date.valueOf((java.time.LocalDate) fieldValue);
+            } else if (fieldValue instanceof java.time.LocalTime) {
+                return java.sql.Time.valueOf((java.time.LocalTime) fieldValue);
+            } else if (fieldValue instanceof Enum) {
+                return fieldValue.toString();
+            } else if (fieldValue != null && !isPrimitiveOrWrapper(fieldValue.getClass())) {
+                // 复杂对象转换为JSON字符串
+                try {
+                    return new com.fasterxml.jackson.databind.ObjectMapper()
+                            .writeValueAsString(fieldValue);
+                } catch (Exception e) {
+                    log.debug("序列化字段 {} 失败，使用toString: {}", fieldName, e.getMessage());
+                    return fieldValue.toString();
                 }
             }
             
-            if (customFields.isEmpty()) {
-                return null;
-            }
-            
-            // 使用简单的JSON序列化
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            return mapper.writeValueAsString(customFields);
+            return fieldValue;
             
         } catch (Exception e) {
-            log.debug("提取自定义字段失败: {}", e.getMessage());
+            log.debug("获取字段 {} 值失败: {}", fieldName, e.getMessage());
             return null;
         }
     }
     
     /**
-     * 检查是否为BaseLogEntity的基础字段
+     * 获取预设实体字段值
      */
-    private boolean isBaseField(String fieldName) {
-        return fieldName.equals("id") || fieldName.equals("username") || 
-               fieldName.equals("description") || fieldName.equals("clientIp") ||
-               fieldName.equals("status") || fieldName.equals("createTime") ||
-               fieldName.equals("module") || fieldName.equals("target") ||
-               fieldName.equals("operationType") || fieldName.equals("exceptionMessage");
+    private Object getPresetEntityFieldValue(BaseLogEntity logEntity, String fieldName) {
+        try {
+            // 处理审计字段
+            switch (fieldName.toLowerCase()) {
+                case "created_at":
+                case "updated_at":
+                    return Timestamp.valueOf(LocalDateTime.now());
+            }
+            
+            // 尝试通过反射获取字段值
+            Object fieldValue = getFieldValue(logEntity, fieldName);
+            
+            // 特殊类型处理
+            if (fieldValue instanceof LocalDateTime) {
+                return Timestamp.valueOf((LocalDateTime) fieldValue);
+            } else if (fieldValue instanceof java.time.LocalDate) {
+                return java.sql.Date.valueOf((java.time.LocalDate) fieldValue);
+            } else if (fieldValue instanceof java.time.LocalTime) {
+                return java.sql.Time.valueOf((java.time.LocalTime) fieldValue);
+            } else if (fieldValue instanceof Enum) {
+                return fieldValue.toString();
+            } else if (fieldValue != null && !isPrimitiveOrWrapper(fieldValue.getClass())) {
+                // 复杂对象转换为JSON字符串
+                try {
+                    return new com.fasterxml.jackson.databind.ObjectMapper()
+                            .writeValueAsString(fieldValue);
+                } catch (Exception e) {
+                    log.debug("序列化预设实体字段 {} 失败，使用toString: {}", fieldName, e.getMessage());
+                    return fieldValue.toString();
+                }
+            }
+            
+            return fieldValue;
+            
+        } catch (Exception e) {
+            log.debug("获取预设实体字段 {} 值失败: {}", fieldName, e.getMessage());
+            return null;
+        }
     }
+    
+    /**
+     * 检查是否为基本类型或包装类型
+     */
+    private boolean isPrimitiveOrWrapper(Class<?> clazz) {
+        return clazz.isPrimitive() || 
+               clazz == String.class ||
+               clazz == Integer.class ||
+               clazz == Long.class ||
+               clazz == Double.class ||
+               clazz == Float.class ||
+               clazz == Boolean.class ||
+               clazz == BigDecimal.class ||
+               Number.class.isAssignableFrom(clazz);
+    }
+    
     
     /**
      * 安全地获取字段值

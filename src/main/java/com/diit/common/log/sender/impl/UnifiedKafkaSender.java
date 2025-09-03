@@ -1,6 +1,8 @@
 package com.diit.common.log.sender.impl;
 
 import com.diit.common.log.entity.BaseLogEntity;
+import com.diit.common.log.exception.LogResultCode;
+import com.diit.common.log.exception.LogSenderException;
 import com.diit.common.log.sender.GenericLogSender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -59,7 +61,8 @@ public class UnifiedKafkaSender implements GenericLogSender<BaseLogEntity> {
             }
         } catch (Exception e) {
             log.error("批量发送日志到Kafka失败", e);
-            throw new RuntimeException("Failed to batch send logs to Kafka", e);
+            throw new LogSenderException(LogResultCode.KAFKA_MESSAGE_SEND_FAILED, 
+                "批量发送失败", e);
         }
     }
     
@@ -120,19 +123,14 @@ public class UnifiedKafkaSender implements GenericLogSender<BaseLogEntity> {
                 log.debug("   Message: {}", message);
                 
             } else {
-                // 模拟模式（KafkaTemplate不可用时）
-                log.warn("⚠️ KafkaTemplate不可用，使用模拟模式:");
-                log.info("   Topic: {}", topic);
-                log.info("   Key: {}", key);
-                log.info("   Category: {}", logCategory);
-                log.info("   实体类型: {}", logEntity.getClass().getSimpleName());
-                log.info("   自定义字段: {}", hasCustomFields(logEntity) ? "是" : "否");
-                log.info("   Message: {}", message);
+                throw new LogSenderException(LogResultCode.KAFKA_SENDER_CONFIG_ERROR, 
+                    "KafkaTemplate未配置，请检查Kafka连接配置");
             }
             
         } catch (Exception e) {
             log.error("Kafka发送日志失败", e);
-            throw new RuntimeException("Failed to send log to Kafka", e);
+            throw new LogSenderException(LogResultCode.KAFKA_MESSAGE_SEND_FAILED, 
+                "Kafka发送日志失败", e);
         }
     }
     
@@ -140,13 +138,31 @@ public class UnifiedKafkaSender implements GenericLogSender<BaseLogEntity> {
      * 生成消息Key
      */
     private String generateMessageKey(BaseLogEntity logEntity) {
-        if (logEntity.getUsername() != null) {
-            return logEntity.getUsername();
+        // 尝试获取username字段
+        String username = getFieldValue(logEntity, "username", String.class);
+        if (username != null) {
+            return username;
         }
+        
         if (logEntity.getId() != null) {
             return logEntity.getId();
         }
         return "unknown";
+    }
+    
+    /**
+     * 获取字段值
+     */
+    @SuppressWarnings("unchecked")
+    private <T> T getFieldValue(BaseLogEntity logEntity, String fieldName, Class<T> type) {
+        try {
+            java.lang.reflect.Field field = logEntity.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            Object value = field.get(logEntity);
+            return type.isInstance(value) ? (T) value : null;
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            return null;
+        }
     }
     
     /**

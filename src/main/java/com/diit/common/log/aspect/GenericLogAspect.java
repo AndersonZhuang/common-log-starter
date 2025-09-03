@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+
 import java.lang.reflect.Method;
 
 /**
@@ -39,6 +40,8 @@ public class GenericLogAspect {
     
     @Autowired
     private SpelUtils spelUtils;
+    
+
     
     /**
      * 切点：所有标注了@GenericLog的方法
@@ -94,6 +97,8 @@ public class GenericLogAspect {
             return;
         }
         
+
+        
         try {
             // 计算响应时间
             long responseTime = System.currentTimeMillis() - startTime;
@@ -112,7 +117,7 @@ public class GenericLogAspect {
             sendLog(logEntity, annotation);
             
         } catch (Exception e) {
-            log.error("处理通用日志记录失败: method={}", method.getName(), e);
+            log.error("❌ 处理通用日志记录失败: method={}", method.getName(), e);
         }
     }
     
@@ -164,7 +169,7 @@ public class GenericLogAspect {
             
             // 设置状态
             String status = exception == null ? "SUCCESS" : "FAILED";
-            logEntity.setStatus(status);
+            setFieldIfExists(entityClass, logEntity, "status", status);
             
             // 记录异常信息
             if (exception != null && annotation.logException()) {
@@ -184,23 +189,58 @@ public class GenericLogAspect {
                 setFieldIfExists(entityClass, logEntity, "responseData", resultJson);
             }
             
+            // 从方法参数中提取自定义字段值
+            extractCustomFieldsFromArgs(logEntity, joinPoint);
+            
         } catch (Exception e) {
             log.debug("填充扩展字段失败", e);
         }
     }
     
     /**
+     * 从方法参数中提取自定义字段值
+     */
+    private void extractCustomFieldsFromArgs(BaseLogEntity logEntity, ProceedingJoinPoint joinPoint) {
+        try {
+            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+            String[] paramNames = signature.getParameterNames();
+            Object[] args = joinPoint.getArgs();
+            
+            if (paramNames == null || args == null || paramNames.length != args.length) {
+                return;
+            }
+            
+            Class<?> entityClass = logEntity.getClass();
+            
+            // 遍历方法参数，尝试设置对应的实体字段
+            for (int i = 0; i < paramNames.length; i++) {
+                String paramName = paramNames[i];
+                Object paramValue = args[i];
+                
+                if (paramValue != null) {
+                    // 尝试设置字段值
+                    setFieldIfExists(entityClass, logEntity, paramName, paramValue);
+                }
+            }
+            
+        } catch (Exception e) {
+            log.debug("从方法参数提取自定义字段失败", e);
+        }
+    }
+    
+
+    
+    /**
      * 如果字段存在则设置值
      */
-    private void setFieldIfExists(Class<?> clazz, Object obj, String fieldName, Object value) {
+    private boolean setFieldIfExists(Class<?> clazz, Object obj, String fieldName, Object value) {
         try {
             java.lang.reflect.Field field = clazz.getDeclaredField(fieldName);
             field.setAccessible(true);
             field.set(obj, value);
-        } catch (NoSuchFieldException e) {
-            // 字段不存在，忽略
+            return true;
         } catch (Exception e) {
-            log.debug("设置字段失败: {}={}", fieldName, value, e);
+            return false;
         }
     }
     

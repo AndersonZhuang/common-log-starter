@@ -1,9 +1,10 @@
 package com.diit.common.log.entity;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -13,13 +14,11 @@ import java.time.LocalDateTime;
  * @author diit
  */
 @Data
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class OperationLogEntity {
-    
-    /** 主键ID */
-    private String id;
+@EqualsAndHashCode(callSuper = true)
+public class OperationLogEntity extends BaseLogEntity {
     
     /** 用户名 */
     private String username;

@@ -15,8 +15,11 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Import;
 import org.springframework.kafka.core.KafkaTemplate;
+
+
 
 /**
  * 日志自动配置类
@@ -26,10 +29,13 @@ import org.springframework.kafka.core.KafkaTemplate;
 @Slf4j
 @Configuration
 @EnableConfigurationProperties(LogProperties.class)
-@ConditionalOnProperty(prefix = "common.log", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "diit.log", name = "enabled", havingValue = "true", matchIfMissing = true)
+@EnableAspectJAutoProxy(proxyTargetClass = true)
 @Import({LogConfiguration.class})
 @ComponentScan(basePackages = "com.diit.common.log")
 public class LogAutoConfiguration {
+    
+
     
     /**
      * 配置ObjectMapper
@@ -48,7 +54,6 @@ public class LogAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public GenericLogAspect genericLogAspect() {
-        log.info("初始化通用日志切面");
         return new GenericLogAspect();
     }
     

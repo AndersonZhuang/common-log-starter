@@ -1,6 +1,8 @@
 package com.diit.common.log.sender;
 
 import com.diit.common.log.entity.BaseLogEntity;
+import com.diit.common.log.exception.LogResultCode;
+import com.diit.common.log.exception.LogSenderException;
 import com.diit.common.log.properties.LogProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,8 +63,8 @@ public class LogSenderFactory {
         
         return senderCache.computeIfAbsent(storageType, type -> {
             if (logSenders == null || logSenders.isEmpty()) {
-                log.warn("没有可用的日志发送器，使用NoOpLogSender");
-                return new NoOpLogSender();
+                throw new LogSenderException(LogResultCode.SENDER_NOT_CONFIGURED, 
+                    String.format("[%s] 没有可用的日志发送器，请检查配置和依赖", type));
             }
             
             for (LogSender sender : logSenders) {
@@ -72,8 +74,8 @@ public class LogSenderFactory {
                 }
             }
             
-            log.warn("未找到支持的日志发送器，类型: {}", type);
-            return new NoOpLogSender();
+            throw new LogSenderException(LogResultCode.UNSUPPORTED_SENDER_TYPE, 
+                String.format("未找到支持的日志发送器，类型: %s", type));
         });
     }
     
@@ -85,8 +87,8 @@ public class LogSenderFactory {
      */
     public GenericLogSender<? extends BaseLogEntity> getGenericLogSender(String senderType) {
         if (genericLogSenders == null || genericLogSenders.isEmpty()) {
-            log.warn("没有可用的通用日志发送器，使用NoOpGenericLogSender");
-            return new NoOpGenericLogSender();
+            throw new LogSenderException(LogResultCode.SENDER_NOT_CONFIGURED, 
+                "没有可用的通用日志发送器，请检查配置和依赖");
         }
         
         // 如果指定了发送器类型，优先使用指定的
@@ -98,8 +100,8 @@ public class LogSenderFactory {
                         return sender;
                     }
                 }
-                log.warn("未找到指定的通用发送器类型: {}", type);
-                return new NoOpGenericLogSender();
+                throw new LogSenderException(LogResultCode.UNSUPPORTED_SENDER_TYPE, 
+                    String.format("未找到指定的通用发送器类型: %s", type));
             });
         }
         
@@ -113,8 +115,8 @@ public class LogSenderFactory {
                 }
             }
             
-            log.warn("未找到支持的通用日志发送器，类型: {}", type);
-            return new NoOpGenericLogSender();
+            throw new LogSenderException(LogResultCode.UNSUPPORTED_SENDER_TYPE, 
+                String.format("未找到支持的通用日志发送器，类型: %s", type));
         });
     }
     
@@ -150,58 +152,4 @@ public class LogSenderFactory {
                 .anyMatch(sender -> senderType.equals(sender.getSenderType()));
     }
     
-    /** todo
-     * 无操作日志发送器（兜底实现）
-     */
-    private static class NoOpLogSender implements LogSender {
-        @Override
-        public void sendAccessLog(com.diit.common.log.entity.UserAccessLogEntity log) {
-            // 不执行任何操作
-        }
-        
-        @Override
-        public void sendOperationLog(com.diit.common.log.entity.OperationLogEntity log) {
-            // 不执行任何操作
-        }
-        
-        @Override
-        public boolean supports(String logType) {
-            return false;
-        }
-        
-        @Override
-        public String getName() {
-            return "NoOpLogSender";
-        }
-    }
-    
-    /**
-     * 无操作通用日志发送器（兜底实现）
-     */
-    private static class NoOpGenericLogSender implements GenericLogSender<BaseLogEntity> {
-        @Override
-        public void send(BaseLogEntity logEntity) {
-            // 不执行任何操作
-        }
-        
-        @Override
-        public void sendAsync(BaseLogEntity logEntity) {
-            // 不执行任何操作
-        }
-        
-        @Override
-        public void sendBatch(java.util.List<BaseLogEntity> logEntities) {
-            // 不执行任何操作
-        }
-        
-        @Override
-        public String getSenderType() {
-            return "noop";
-        }
-        
-        @Override
-        public boolean supports(Class<? extends BaseLogEntity> entityClass) {
-            return true; // 支持所有类型，但不执行任何操作
-        }
-    }
 }

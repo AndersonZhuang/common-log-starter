@@ -1,6 +1,8 @@
 package com.diit.common.log.sender.impl;
 
 import com.diit.common.log.entity.BaseLogEntity;
+import com.diit.common.log.exception.LogResultCode;
+import com.diit.common.log.exception.LogSenderException;
 import com.diit.common.log.sender.GenericLogSender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -89,21 +91,21 @@ public class UnifiedHttpSender implements GenericLogSender<BaseLogEntity> {
             // 将日志实体序列化为JSON（包含所有自定义字段）
             String json = objectMapper.writeValueAsString(logEntity);
             
-            if (restTemplate != null) {
-                // 真实发送HTTP请求
-                sendHttpRequest(endpoint, json, logEntity);
-            } else {
-                // 模拟模式
-                log.warn("⚠️ RestTemplate不可用，使用模拟模式:");
-                log.info("   Endpoint: {}", endpoint);
-                log.info("   实体类型: {}", logEntity.getClass().getSimpleName());
-                log.info("   自定义字段: {}", hasCustomFields(logEntity) ? "是" : "否");
-                log.info("   JSON: {}", json);
+            if (restTemplate == null) {
+                throw new LogSenderException(LogResultCode.HTTP_SENDER_CONFIG_ERROR, 
+                    "RestTemplate未配置，请检查配置或确保Spring容器中存在RestTemplate Bean");
             }
             
+            // 发送HTTP请求
+            sendHttpRequest(endpoint, json, logEntity);
+            
+        } catch (LogSenderException e) {
+            // 重新抛出日志发送器异常
+            throw e;
         } catch (Exception e) {
             log.error("HTTP发送日志失败", e);
-            throw new RuntimeException("Failed to send log to HTTP", e);
+            throw new LogSenderException(LogResultCode.HTTP_REQUEST_FAILED, 
+                "HTTP发送日志失败", e);
         }
     }
     
@@ -133,6 +135,8 @@ public class UnifiedHttpSender implements GenericLogSender<BaseLogEntity> {
             
         } catch (Exception e) {
             log.error("❌ HTTP请求异常 - Endpoint: {}, Error: {}", endpoint, e.getMessage());
+            throw new LogSenderException(LogResultCode.HTTP_REQUEST_FAILED, 
+                "HTTP请求异常: " + e.getMessage(), e);
         }
     }
     
