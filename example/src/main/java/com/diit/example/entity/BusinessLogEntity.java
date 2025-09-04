@@ -7,6 +7,7 @@ import lombok.EqualsAndHashCode;
 /**
  * 业务日志实体类
  * 用于测试@GenericLog注解的自定义实体功能
+ * 只保留四个核心业务字段，避免冗余
  * 
  * @author diit
  */
@@ -22,19 +23,4 @@ public class BusinessLogEntity extends BaseLogEntity {
     
     /** 项目 */
     private String project;
-    
-    /** 自定义字段1 */
-    private String customField1;
-    
-    /** 自定义字段2 */
-    private String customField2;
-    
-    /** 业务数据 */
-    private String businessData;
-    
-    /** 操作结果 */
-    private String operationResult;
-    
-    /** 影响范围 */
-    private String impactScope;
 }

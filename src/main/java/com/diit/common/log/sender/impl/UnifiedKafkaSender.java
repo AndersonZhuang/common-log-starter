@@ -12,6 +12,7 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -140,13 +141,27 @@ public class UnifiedKafkaSender implements GenericLogSender<BaseLogEntity> {
      * 生成消息Key
      */
     private String generateMessageKey(BaseLogEntity logEntity) {
-        if (logEntity.getUsername() != null) {
-            return logEntity.getUsername();
-        }
+        // 直接使用ID作为key，避免访问不存在的字段
         if (logEntity.getId() != null) {
             return logEntity.getId();
         }
         return "unknown";
+    }
+    
+    /**
+     * 安全地获取字段值，如果方法不存在则返回null
+     */
+    private String getFieldSafely(BaseLogEntity entity, String methodName) {
+        try {
+            Class<?> entityClass = entity.getClass();
+            Method method = entityClass.getMethod(methodName);
+            Object result = method.invoke(entity);
+            return result != null ? result.toString() : null;
+        } catch (Exception e) {
+            // 方法不存在或调用失败，返回null
+            log.debug("无法获取字段 {}: {}", methodName, e.getMessage());
+            return null;
+        }
     }
     
     /**

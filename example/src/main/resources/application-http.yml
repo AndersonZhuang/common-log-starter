@@ -13,6 +13,10 @@ spring:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
       - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration
 
 # Knife4j配置
 knife4j:
@@ -38,8 +42,8 @@ diit:
     # HTTP配置
     http:
       enabled: true
-      accessLogEndpoint: http://localhost:8080/api/logs/access
-      operationLogEndpoint: http://localhost:8080/api/logs/operation
+      accessLogEndpoint: http://localhost:8081/api/logs/receive
+      operationLogEndpoint: http://localhost:8081/api/logs/receive
       connectTimeout: 5000
       readTimeout: 30000
     

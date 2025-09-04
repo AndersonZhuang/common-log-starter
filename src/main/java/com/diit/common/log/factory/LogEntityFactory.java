@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -56,35 +57,18 @@ public class LogEntityFactory {
         // 生成ID
         logEntity.setId(generateLogId());
         
-        // 设置描述
-        logEntity.setDescription(description);
+        // 设置时间戳
+        logEntity.setTimestamp(LocalDateTime.now());
         
-        // 设置创建时间
-        logEntity.setCreateTime(LocalDateTime.now());
+        // 设置内容（描述）
+        logEntity.setContent(description);
         
-        // 从上下文获取用户信息
-        try {
-            String username = LogContextUtils.getCurrentUsername();
-            logEntity.setUsername(username);
-        } catch (Exception e) {
-            log.debug("获取用户名失败，将设置为匿名用户", e);
-            logEntity.setUsername("anonymous");
-        }
+        // 设置日志级别
+        logEntity.setLevel(org.springframework.boot.logging.LogLevel.INFO);
         
-        // 从请求中获取IP地址
-        try {
-            HttpServletRequest request = LogContextUtils.getCurrentRequest();
-            if (request != null) {
-                String clientIp = LogContextUtils.getClientIpAddress(request);
-                logEntity.setClientIp(clientIp);
-            }
-        } catch (Exception e) {
-            log.debug("获取客户端IP失败", e);
-            logEntity.setClientIp("unknown");
-        }
-        
-        // 默认设置为成功状态，后续可能会被覆盖
-        logEntity.setStatus("SUCCESS");
+        // 注意：BaseLogEntity只包含id、timestamp、content、level四个基础字段
+        // 其他字段如username、clientIp、status等需要子类自己定义
+        // 这里不再尝试设置这些字段，避免反射错误
     }
     
     /**
@@ -105,10 +89,52 @@ public class LogEntityFactory {
      */
     public void copyBaseFields(BaseLogEntity source, BaseLogEntity target) {
         target.setId(source.getId());
-        target.setUsername(source.getUsername());
-        target.setDescription(source.getDescription());
-        target.setClientIp(source.getClientIp());
-        target.setStatus(source.getStatus());
-        target.setCreateTime(source.getCreateTime());
+        target.setTimestamp(source.getTimestamp());
+        target.setContent(source.getContent());
+        target.setLevel(source.getLevel());
+        
+        // 只复制BaseLogEntity中确实存在的字段
+        // 其他字段由子类自己处理
+    }
+    
+    /**
+     * 安全地设置字段值，如果方法不存在则忽略
+     */
+    private void setFieldSafely(BaseLogEntity entity, String methodName, Object value) {
+        if (value == null) return;
+        
+        try {
+            Class<?> entityClass = entity.getClass();
+            Method method = null;
+            
+            // 尝试找到对应的setter方法
+            if (value instanceof String) {
+                method = entityClass.getMethod(methodName, String.class);
+            } else if (value instanceof java.time.LocalDateTime) {
+                method = entityClass.getMethod(methodName, java.time.LocalDateTime.class);
+            }
+            
+            if (method != null) {
+                method.invoke(entity, value);
+            }
+        } catch (Exception e) {
+            // 方法不存在或调用失败，忽略
+            log.debug("无法设置字段 {}: {}", methodName, e.getMessage());
+        }
+    }
+    
+    /**
+     * 安全地获取字段值，如果方法不存在则返回null
+     */
+    private Object getFieldSafely(BaseLogEntity entity, String methodName) {
+        try {
+            Class<?> entityClass = entity.getClass();
+            Method method = entityClass.getMethod(methodName);
+            return method.invoke(entity);
+        } catch (Exception e) {
+            // 方法不存在或调用失败，返回null
+            log.debug("无法获取字段 {}: {}", methodName, e.getMessage());
+            return null;
+        }
     }
 }

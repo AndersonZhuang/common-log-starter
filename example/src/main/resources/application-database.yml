@@ -6,9 +6,9 @@ spring:
   application:
     name: common-log-starter-example
   datasource:
-    url: jdbc:postgresql://localhost:5433/logdb
-    username: loguser
-    password: logpass123
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: postgres
+    password: postgres
     driver-class-name: org.postgresql.Driver
     hikari:
       connection-timeout: 30000
@@ -41,6 +41,7 @@ diit:
     database:
       enabled: true
       tablePrefix: log_
+      tableName: log  # 主表名，可以自定义
       autoCreateTable: false
     
     # 其他存储方式禁用

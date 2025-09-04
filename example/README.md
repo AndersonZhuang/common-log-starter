@@ -1,204 +1,331 @@
-# Common Log Starter Example
+# Common Log Starter 示例项目
 
-这是 `common-log-starter` 的使用示例项目，展示了如何使用日志注解和配置。
+这是一个展示Common Log Starter功能的示例Spring Boot应用。
 
-## 🚀 快速开始
+## 项目结构
 
-### 1. 运行项目
-
-```bash
-# 进入example目录
-cd example
-
-# 编译项目
-mvn clean compile
-
-# 运行项目
-mvn spring-boot:run
+```
+example/
+├── src/main/java/com/diit/example/
+│   ├── controller/          # 控制器层
+│   │   ├── LogTestController.java      # 日志测试控制器
+│   │   └── UserController.java         # 用户管理控制器
+│   ├── entity/             # 实体类
+│   │   ├── BusinessLogEntity.java      # 业务日志实体
+│   │   ├── OrderLogEntity.java         # 订单日志实体
+│   │   └── UserActivityLogEntity.java  # 用户活动日志实体
+│   ├── service/            # 服务层
+│   │   └── DirectKafkaService.java     # 直接Kafka服务
+│   ├── exception/          # 异常处理
+│   │   └── GlobalExceptionHandler.java # 全局异常处理器
+│   └── ExampleApplication.java         # 启动类
+└── src/main/resources/
+    ├── application.yml              # 主配置文件
+    ├── application-kafka.yml        # Kafka配置
+    ├── application-elasticsearch.yml # Elasticsearch配置
+    ├── application-database.yml     # 数据库配置
+    └── application-http.yml         # HTTP配置
 ```
 
-### 2. 访问接口文档
+## 快速开始
 
-项目启动后，访问以下地址查看API文档：
+### 1. 环境准备
 
-- **Knife4j接口文档**: http://localhost:8080/doc.html
-- **Swagger JSON**: http://localhost:8080/v3/api-docs
+#### 启动依赖服务
+```bash
+# 启动Docker服务（Kafka、Elasticsearch、PostgreSQL等）
+docker compose up -d
 
-## 📋 接口说明
+# 启动HTTP日志服务器
+python3 http-log-server.py
+```
 
-### 用户管理接口
+#### 编译安装Starter
+```bash
+# 在项目根目录
+mvn clean install -DskipTests
+```
 
-- `POST /api/users/login` - 用户登录（访问日志）
-- `POST /api/users/logout` - 用户登出（访问日志）
-- `POST /api/users` - 创建用户（操作日志）
-- `PUT /api/users/{id}` - 更新用户（操作日志）
-- `DELETE /api/users/{id}` - 删除用户（操作日志）
-- `GET /api/users/{id}` - 查询用户（操作日志）
+### 2. 运行示例
 
-### 测试接口
+#### Kafka模式
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=kafka
+```
 
-- `GET /api/test/normal` - 正常访问测试
-- `POST /api/test/with-params` - 带参数访问测试
-- `POST /api/test/operation` - 操作日志测试
-- `GET /api/test/exception` - 异常测试
-- `POST /api/test/batch` - 批量操作测试
-- `POST /api/test/sensitive` - 敏感信息测试
-- `GET /api/test/performance` - 性能测试
+#### Elasticsearch模式
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=elasticsearch
+```
 
-### 日志管理接口
+#### Database模式
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=database
+```
 
-- `POST /api/logs/access` - 接收访问日志
-- `POST /api/logs/operation` - 接收操作日志
-- `GET /api/logs/access` - 查看访问日志
-- `GET /api/logs/operation` - 查看操作日志
-- `GET /api/logs/stats` - 获取日志统计
-- `DELETE /api/logs` - 清空所有日志
+#### HTTP模式
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=http
+```
 
-## 🔧 配置说明
+### 3. 测试API
 
-### 开发环境配置 (application-dev.yml)
+#### 用户管理API
+```bash
+# 创建用户（操作日志）
+curl -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"张三","email":"zhangsan@example.com"}'
 
-- 使用HTTP方式发送日志（便于测试）
-- 同步发送日志（便于调试）
-- 详细日志输出
+# 获取用户列表（用户访问日志）
+curl -X GET http://localhost:8080/api/users
 
-### 生产环境配置 (application-prod.yml)
+# 删除用户（操作日志）
+curl -X DELETE http://localhost:8080/api/users/1
+```
 
-- 使用Kafka发送日志
-- 异步发送日志
-- 精简日志输出
+#### 日志测试API
+```bash
+# 测试业务日志（通用日志）
+curl -X POST http://localhost:8080/api/logs/test/business \
+  -H "Content-Type: application/json" \
+  -d '{"businessType":"订单处理","department":"技术部","project":"电商系统"}'
 
-### 日志配置
+# 测试订单日志（通用日志）
+curl -X POST http://localhost:8080/api/logs/test/order \
+  -H "Content-Type: application/json" \
+  -d '{"orderId":"ORD001","amount":99.99,"status":"已支付"}'
 
+# 测试用户活动日志（通用日志）
+curl -X POST http://localhost:8080/api/logs/test/user-activity \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"123","activity":"登录","ip":"192.168.1.100"}'
+```
+
+## 配置说明
+
+### 1. 主配置文件 (application.yml)
 ```yaml
+# 基础配置
+server:
+  port: 8080
+
+spring:
+  application:
+    name: common-log-starter-example
+
+# 日志Starter配置
 diit:
   log:
     enabled: true
     storage:
-      type: http  # 开发环境
-      async: false  # 开发环境同步
-    record:
-      recordParams: true
-      recordResponse: true
-      sensitiveFields: password,token,secret
+      type: kafka  # 默认使用Kafka
+      async: true
+      batchSize: 100
+      batchInterval: 1000
 ```
 
-## 🧪 测试步骤
-
-### 1. 启动项目
-
-```bash
-mvn spring-boot:run
-```
-
-### 2. 查看接口文档
-
-访问 http://localhost:8080/doc.html
-
-### 3. 测试日志记录
-
-#### 测试访问日志
-```bash
-# 正常访问
-curl -X GET "http://localhost:8080/api/test/normal"
-
-# 带参数访问
-curl -X POST "http://localhost:8080/api/test/with-params" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"test","value":"123"}'
-```
-
-#### 测试操作日志
-```bash
-# 创建用户
-curl -X POST "http://localhost:8080/api/users" \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","email":"test@example.com"}'
-
-# 查询用户
-curl -X GET "http://localhost:8080/api/users/12345"
-```
-
-#### 测试异常日志
-```bash
-# 异常测试（可能抛出异常）
-curl -X GET "http://localhost:8080/api/test/exception"
-```
-
-### 4. 查看记录的日志
-
-```bash
-# 查看访问日志
-curl -X GET "http://localhost:8080/api/logs/access"
-
-# 查看操作日志
-curl -X GET "http://localhost:8080/api/logs/operation"
-
-# 查看日志统计
-curl -X GET "http://localhost:8080/api/logs/stats"
-```
-
-## 📊 日志字段说明
-
-### 访问日志字段
-- `requestId`: 请求唯一标识
-- `userId`: 用户ID
-- `username`: 用户名
-- `ip`: 客户端IP
-- `userAgent`: 用户代理
-- `requestUrl`: 请求URL
-- `requestMethod`: 请求方法
-- `requestParams`: 请求参数
-- `responseStatus`: 响应状态
-- `responseTime`: 响应时间
-- `timestamp`: 时间戳
-
-### 操作日志字段
-- `operation`: 操作名称
-- `description`: 操作描述
-- `userId`: 操作用户ID
-- `username`: 操作用户名
-- `ip`: 操作IP
-- `requestParams`: 请求参数
-- `result`: 操作结果
-- `timestamp`: 操作时间
-
-## 🔍 调试技巧
-
-### 1. 查看控制台日志
-
-项目启动时会显示详细的日志配置信息，包括：
-- 日志Starter初始化状态
-- 切面组件加载状态
-- 发送器配置信息
-
-### 2. 查看HTTP日志
-
-开发环境使用HTTP方式发送日志，可以在控制台看到：
-- 日志发送请求
-- 日志接收响应
-- 错误信息（如果有）
-
-### 3. 切换存储方式
-
-修改 `application.yml` 中的配置：
-
+### 2. Kafka配置 (application-kafka.yml)
 ```yaml
 diit:
   log:
     storage:
-      type: kafka  # 或 elasticsearch, database, http
+      type: kafka
+    kafka:
+      enabled: true
+      bootstrapServers: localhost:9092
+      accessLogTopic: access-log
+      operationLogTopic: operation-log
+    http:
+      enabled: false  # 禁用HTTP发送器
 ```
 
-## 🚨 注意事项
+### 3. Elasticsearch配置 (application-elasticsearch.yml)
+```yaml
+diit:
+  log:
+    storage:
+      type: elasticsearch
+    elasticsearch:
+      enabled: true
+      hosts: localhost:9200
+      indexPrefix: common-log
+    http:
+      enabled: false
+```
 
-1. **开发环境**：使用HTTP方式便于测试，但生产环境建议使用Kafka或Elasticsearch
-2. **敏感信息**：密码、token等敏感字段会自动过滤，不会记录到日志中
-3. **性能影响**：开发环境同步发送可能影响性能，生产环境建议异步发送
-4. **存储清理**：测试完成后可以调用清空接口清理日志数据
+### 4. Database配置 (application-database.yml)
+```yaml
+diit:
+  log:
+    storage:
+      type: database
+    database:
+      enabled: true
+      tableName: log  # 自定义表名
+      autoCreateTable: false  # 手动建表
+    http:
+      enabled: false
 
-## 📚 更多信息
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+```
 
-- [Common Log Starter 主项目](../README.md)
-- [Spring Boot 官方文档](https://spring.io/projects/spring-boot)
-- [Knife4j 官方文档](https://doc.xiaominfo.com/)
+### 5. HTTP配置 (application-http.yml)
+```yaml
+diit:
+  log:
+    storage:
+      type: http
+    http:
+      enabled: true
+      genericEndpoint: http://localhost:8080/api/logs/generic
+    kafka:
+      enabled: false
+    elasticsearch:
+      enabled: false
+```
+
+## 实体类说明
+
+### 1. BusinessLogEntity
+```java
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class BusinessLogEntity extends BaseLogEntity {
+    private String businessType;  // 业务类型
+    private String department;    // 部门
+    private String project;       // 项目
+}
+```
+
+### 2. OrderLogEntity
+```java
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class OrderLogEntity extends BaseLogEntity {
+    private String orderId;       // 订单ID
+    private Double amount;        // 金额
+    private String status;        // 状态
+}
+```
+
+### 3. UserActivityLogEntity
+```java
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class UserActivityLogEntity extends BaseLogEntity {
+    private String userId;        // 用户ID
+    private String activity;      // 活动类型
+    private String ip;           // IP地址
+}
+```
+
+## 日志注解使用
+
+### 1. @OperationLog - 操作日志
+```java
+@OperationLog(module = "用户管理", operation = "创建用户", description = "创建用户: #{#user.name}")
+public User createUser(@RequestBody User user) {
+    // 业务逻辑
+}
+```
+
+### 2. @UserAccessLog - 用户访问日志
+```java
+@UserAccessLog(description = "访问用户列表页面")
+public List<User> getUserList() {
+    // 业务逻辑
+}
+```
+
+### 3. @GenericLog - 通用日志
+```java
+@GenericLog(description = "业务操作: #{#businessType}")
+public void processBusiness(@RequestBody BusinessLogEntity businessLog) {
+    // 业务逻辑
+}
+```
+
+## 查看日志数据
+
+### 1. Kafka日志
+```bash
+# 查看操作日志
+docker exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic operation-log --from-beginning
+
+# 查看用户访问日志
+docker exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic access-log --from-beginning
+
+# 查看通用日志
+docker exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic log_business_log_entity --from-beginning
+```
+
+### 2. Elasticsearch日志
+```bash
+# 查看所有日志
+curl -X GET "localhost:9200/logs-*/_search?pretty" -H 'Content-Type: application/json' -d'
+{
+  "query": {"match_all": {}},
+  "size": 10
+}'
+```
+
+### 3. Database日志
+```bash
+# 连接PostgreSQL
+docker exec -it postgres psql -U postgres -d postgres
+
+# 查看日志数据
+SELECT * FROM log ORDER BY timestamp DESC LIMIT 10;
+```
+
+### 4. HTTP日志
+查看HTTP日志服务器控制台输出。
+
+## 故障排除
+
+### 1. 端口冲突
+```bash
+# 查看端口占用
+lsof -i :8080
+
+# 杀死占用进程
+lsof -ti :8080 | xargs kill -9
+```
+
+### 2. 依赖服务未启动
+```bash
+# 检查Docker服务状态
+docker ps
+
+# 重启所有服务
+docker compose restart
+```
+
+### 3. 数据库连接失败
+```bash
+# 检查PostgreSQL状态
+docker exec -it postgres psql -U postgres -c "SELECT version();"
+```
+
+## 开发说明
+
+### 1. 添加新的实体类
+1. 继承`BaseLogEntity`
+2. 添加自定义字段
+3. 使用`@GenericLog`注解记录日志
+
+### 2. 添加新的API
+1. 在Controller中添加方法
+2. 使用相应的日志注解
+3. 测试日志记录功能
+
+### 3. 自定义配置
+1. 修改对应的`application-*.yml`文件
+2. 重启应用使配置生效
+3. 验证配置是否正确

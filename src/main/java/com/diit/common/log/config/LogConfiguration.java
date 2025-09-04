@@ -31,6 +31,7 @@ public class LogConfiguration {
      * 配置Kafka生产者工厂
      */
     @Bean
+    @ConditionalOnClass(KafkaTemplate.class)
     @ConditionalOnProperty(prefix = "diit.log.kafka", name = "enabled", havingValue = "true")
     public ProducerFactory<String, String> kafkaProducerFactory(LogProperties logProperties) {
         Map<String, Object> configProps = new HashMap<>();
@@ -59,6 +60,7 @@ public class LogConfiguration {
      * 配置Kafka模板
      */
     @Bean
+    @ConditionalOnClass(KafkaTemplate.class)
     @ConditionalOnProperty(prefix = "diit.log.kafka", name = "enabled", havingValue = "true")
     public KafkaTemplate<String, String> kafkaTemplate(ProducerFactory<String, String> producerFactory) {
         log.info("初始化KafkaTemplate");

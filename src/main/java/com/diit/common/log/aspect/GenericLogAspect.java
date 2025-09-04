@@ -144,6 +144,17 @@ public class GenericLogAspect {
         try {
             Class<?> entityClass = logEntity.getClass();
             
+            // 确保基础字段被正确设置（只在为null时设置）
+            if (logEntity.getTimestamp() == null) {
+                logEntity.setTimestamp(java.time.LocalDateTime.now());
+            }
+            if (logEntity.getContent() == null) {
+                logEntity.setContent("操作记录");
+            }
+            if (logEntity.getLevel() == null) {
+                logEntity.setLevel(org.springframework.boot.logging.LogLevel.INFO);
+            }
+            
             // 设置模块
             if (StringUtils.hasText(annotation.module())) {
                 setFieldIfExists(entityClass, logEntity, "module", annotation.module());
@@ -164,7 +175,7 @@ public class GenericLogAspect {
             
             // 设置状态
             String status = exception == null ? "SUCCESS" : "FAILED";
-            logEntity.setStatus(status);
+            setFieldIfExists(entityClass, logEntity, "status", status);
             
             // 记录异常信息
             if (exception != null && annotation.logException()) {
@@ -176,6 +187,9 @@ public class GenericLogAspect {
             if (annotation.logArgs()) {
                 String argsJson = spelUtils.convertToJson(joinPoint.getArgs());
                 setFieldIfExists(entityClass, logEntity, "requestArgs", argsJson);
+                
+                // 尝试从方法参数中提取字段值
+                extractAndSetParameterFields(logEntity, joinPoint);
             }
             
             // 记录返回值
@@ -217,6 +231,42 @@ public class GenericLogAspect {
         } catch (Exception e) {
             log.error("发送日志失败: entityClass={}, senderType={}", 
                      logEntity.getClass().getSimpleName(), annotation.senderType(), e);
+        }
+    }
+    
+    /**
+     * 从方法参数中提取字段值并设置到日志实体
+     */
+    private void extractAndSetParameterFields(BaseLogEntity logEntity, ProceedingJoinPoint joinPoint) {
+        try {
+            Object[] args = joinPoint.getArgs();
+            if (args == null || args.length == 0) {
+                return;
+            }
+            
+            // 获取方法参数名（如果可用）
+            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+            String[] paramNames = signature.getParameterNames();
+            
+            if (paramNames == null) {
+                return;
+            }
+            
+            // 遍历参数，尝试设置到对应的字段
+            for (int i = 0; i < args.length && i < paramNames.length; i++) {
+                String paramName = paramNames[i];
+                Object paramValue = args[i];
+                
+                if (paramValue == null) {
+                    continue;
+                }
+                
+                // 尝试设置到对应的字段
+                setFieldIfExists(logEntity.getClass(), logEntity, paramName, paramValue);
+            }
+            
+        } catch (Exception e) {
+            log.debug("从方法参数提取字段值失败", e);
         }
     }
 }

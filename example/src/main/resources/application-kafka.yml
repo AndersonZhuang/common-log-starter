@@ -52,12 +52,7 @@ diit:
     elasticsearch:
       enabled: false
     http:
-      enabled: true
-      url: http://localhost:8080/api/logs/receive
-      method: POST
-      headers:
-        Content-Type: application/json
-        X-Log-Source: CommonLogStarter
+      enabled: false
     database:
       enabled: false
     

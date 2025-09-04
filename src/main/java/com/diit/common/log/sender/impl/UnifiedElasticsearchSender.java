@@ -85,6 +85,17 @@ public class UnifiedElasticsearchSender implements GenericLogSender<BaseLogEntit
      */
     private void sendGenericLog(BaseLogEntity logEntity) {
         try {
+            // 确保基础字段被正确设置（只在为null时设置）
+            if (logEntity.getTimestamp() == null) {
+                logEntity.setTimestamp(java.time.LocalDateTime.now());
+            }
+            if (logEntity.getContent() == null) {
+                logEntity.setContent("操作记录");
+            }
+            if (logEntity.getLevel() == null) {
+                logEntity.setLevel(org.springframework.boot.logging.LogLevel.INFO);
+            }
+            
             // 生成ES索引名称
             String indexName = generateIndexName(logEntity);
             

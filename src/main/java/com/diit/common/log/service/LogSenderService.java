@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -222,19 +223,19 @@ public class LogSenderService {
                             baseLogEntity.setId((String) value);
                             break;
                         case "username":
-                            baseLogEntity.setUsername((String) value);
+                            setFieldSafely(baseLogEntity, "setUsername", (String) value);
                             break;
                         case "description":
-                            baseLogEntity.setDescription((String) value);
+                            setFieldSafely(baseLogEntity, "setDescription", (String) value);
                             break;
                         case "clientIp":
-                            baseLogEntity.setClientIp((String) value);
+                            setFieldSafely(baseLogEntity, "setClientIp", (String) value);
                             break;
                         case "status":
-                            baseLogEntity.setStatus((String) value);
+                            setFieldSafely(baseLogEntity, "setStatus", (String) value);
                             break;
                         case "createTime":
-                            baseLogEntity.setCreateTime((java.time.LocalDateTime) value);
+                            setFieldSafely(baseLogEntity, "setCreateTime", (java.time.LocalDateTime) value);
                             break;
                     }
                 } catch (Exception e) {
@@ -246,6 +247,30 @@ public class LogSenderService {
         } catch (Exception e) {
             log.error("转换日志实体失败", e);
             return null;
+        }
+    }
+    
+    /**
+     * 安全地设置字段值，如果方法不存在则忽略
+     */
+    private void setFieldSafely(BaseLogEntity entity, String methodName, Object value) {
+        try {
+            Class<?> entityClass = entity.getClass();
+            Method method = null;
+            
+            // 尝试找到对应的setter方法
+            if (value instanceof String) {
+                method = entityClass.getMethod(methodName, String.class);
+            } else if (value instanceof java.time.LocalDateTime) {
+                method = entityClass.getMethod(methodName, java.time.LocalDateTime.class);
+            }
+            
+            if (method != null) {
+                method.invoke(entity, value);
+            }
+        } catch (Exception e) {
+            // 方法不存在或调用失败，忽略
+            log.debug("无法设置字段 {}: {}", methodName, e.getMessage());
         }
     }
 }

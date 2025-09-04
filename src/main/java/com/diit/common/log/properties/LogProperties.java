@@ -172,6 +172,11 @@ public class LogProperties {
         private String tablePrefix = "log_";
         
         /**
+         * 主表名（存储所有日志的表）
+         */
+        private String tableName = "common_logs";
+        
+        /**
          * 是否自动创建表
          */
         private boolean autoCreateTable = true;

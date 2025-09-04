@@ -1,6 +1,7 @@
 package com.diit.common.log.sender.impl;
 
 import com.diit.common.log.entity.BaseLogEntity;
+import com.diit.common.log.properties.LogProperties;
 import com.diit.common.log.sender.GenericLogSender;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -30,6 +31,9 @@ public class UnifiedHttpSender implements GenericLogSender<BaseLogEntity> {
     
     @Autowired(required = false)
     private RestTemplate restTemplate;
+    
+    @Autowired
+    private LogProperties logProperties;
     
     private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule())
@@ -83,8 +87,19 @@ public class UnifiedHttpSender implements GenericLogSender<BaseLogEntity> {
      */
     private void sendGenericLog(BaseLogEntity logEntity) {
         try {
-            // 确定HTTP端点
-            String endpoint = DEFAULT_GENERIC_LOG_ENDPOINT;
+            // 确保基础字段被正确设置（只在为null时设置）
+            if (logEntity.getTimestamp() == null) {
+                logEntity.setTimestamp(java.time.LocalDateTime.now());
+            }
+            if (logEntity.getContent() == null) {
+                logEntity.setContent("操作记录");
+            }
+            if (logEntity.getLevel() == null) {
+                logEntity.setLevel(org.springframework.boot.logging.LogLevel.INFO);
+            }
+            
+            // 确定HTTP端点 - 优先使用配置的端点
+            String endpoint = getConfiguredEndpoint();
             
             // 将日志实体序列化为JSON（包含所有自定义字段）
             String json = objectMapper.writeValueAsString(logEntity);
@@ -142,5 +157,25 @@ public class UnifiedHttpSender implements GenericLogSender<BaseLogEntity> {
     private boolean hasCustomFields(BaseLogEntity logEntity) {
         // 如果不是DefaultLogEntity，则认为包含自定义字段
         return !"DefaultLogEntity".equals(logEntity.getClass().getSimpleName());
+    }
+    
+    /**
+     * 获取配置的HTTP端点
+     */
+    private String getConfiguredEndpoint() {
+        if (logProperties != null && logProperties.getHttp() != null) {
+            // 优先使用accessLogEndpoint，如果没有则使用operationLogEndpoint
+            String endpoint = logProperties.getHttp().getAccessLogEndpoint();
+            if (endpoint == null || endpoint.trim().isEmpty()) {
+                endpoint = logProperties.getHttp().getOperationLogEndpoint();
+            }
+            if (endpoint != null && !endpoint.trim().isEmpty()) {
+                log.debug("使用配置的HTTP端点: {}", endpoint);
+                return endpoint;
+            }
+        }
+        
+        log.debug("使用默认HTTP端点: {}", DEFAULT_GENERIC_LOG_ENDPOINT);
+        return DEFAULT_GENERIC_LOG_ENDPOINT;
     }
 }

@@ -8,6 +8,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
@@ -24,6 +25,7 @@ import java.util.UUID;
  */
 @Slf4j
 @Service
+@ConditionalOnProperty(prefix = "diit.log.kafka", name = "enabled", havingValue = "true")
 public class DirectKafkaService {
     
     private KafkaProducer<String, String> producer;
@@ -77,21 +79,14 @@ public class DirectKafkaService {
             
             // 设置基础字段（继承自BaseLogEntity）
             businessLog.setId(UUID.randomUUID().toString());
-            businessLog.setUsername("test-user");
-            businessLog.setDescription("自定义日志：" + message);
-            businessLog.setClientIp("127.0.0.1");
-            businessLog.setStatus("SUCCESS");
-            businessLog.setCreateTime(LocalDateTime.now());
+            businessLog.setTimestamp(LocalDateTime.now());
+            businessLog.setContent("自定义日志：" + message);
+            businessLog.setLevel(org.springframework.boot.logging.LogLevel.INFO);
             
-            // 设置业务特定字段（BusinessLogEntity的自定义字段）
+            // 设置业务特定字段（BusinessLogEntity的核心字段）
             businessLog.setBusinessType("订单处理");
             businessLog.setDepartment("技术部");
             businessLog.setProject("电商系统");
-            businessLog.setCustomField1("自定义值1");
-            businessLog.setCustomField2("自定义值2");
-            businessLog.setBusinessData("{\"orderId\":\"12345\",\"amount\":99.99}");
-            businessLog.setOperationResult("处理成功");
-            businessLog.setImpactScope("用户订单");
             
             // 序列化为JSON
             String jsonMessage = objectMapper.writeValueAsString(businessLog);

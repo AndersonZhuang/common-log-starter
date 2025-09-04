@@ -1,402 +1,382 @@
-# Sender 测试完整指南
+# Sender测试指南
 
-本指南将详细说明如何测试四种不同的日志发送器（Database、Kafka、Elasticsearch、HTTP）的注册和功能。
+本指南介绍如何测试Common Log Starter的所有发送器（Sender）功能。
 
-## 📋 测试前准备
+## 环境准备
 
-### 1. 环境要求
-- Java 17+
-- Maven 3.6+
-- PostgreSQL（用于Database sender测试）
-- Kafka（用于Kafka sender测试）
-- Elasticsearch（用于Elasticsearch sender测试）
-
-### 2. 启动依赖服务
-
-#### 启动PostgreSQL
+### 1. 启动Docker服务
 ```bash
-# 使用Docker启动PostgreSQL
-docker run --name postgres-test -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres -p 5432:5432 -d postgres:13
-
-# 或者使用本地PostgreSQL服务
-# 确保PostgreSQL运行在localhost:5432，用户名/密码为postgres/postgres
+# 启动Kafka、Elasticsearch、PostgreSQL等依赖服务
+docker compose up -d
 ```
 
-#### 启动Kafka
+### 2. 启动HTTP日志服务器
 ```bash
-# 使用Docker Compose启动Kafka
-docker-compose up -d
-
-# 或者使用本地Kafka服务
-# 确保Kafka运行在localhost:9092
+# 启动HTTP日志接收服务器（用于测试HTTP发送器）
+python3 http-log-server.py
 ```
 
-#### 启动Elasticsearch
-```bash
-# 使用Docker启动Elasticsearch
-docker run --name elasticsearch-test -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" -d elasticsearch:7.17.0
+## LogTestController接口说明
 
-# 或者使用本地Elasticsearch服务
-# 确保Elasticsearch运行在localhost:9200
-```
+示例项目提供了`LogTestController`，包含三个专门的日志测试接口：
 
-## 🧪 测试流程
+### 接口列表
 
-### 测试1: Database Sender
+#### 1. 用户访问日志测试（预设）
+- **接口**: `POST /api/log-test/user-access`
+- **注解**: `@UserAccessLog`
+- **功能**: 测试预设的用户访问日志记录
+- **参数**: `{"username":"testuser","password":"123456"}`
 
-#### 1.1 启动应用
-```bash
-cd example
-mvn spring-boot:run -Dspring-boot.run.profiles=database
-```
+#### 2. 操作日志测试（预设）
+- **接口**: `POST /api/log-test/operation`
+- **注解**: `@OperationLog`
+- **功能**: 测试预设的操作日志记录
+- **参数**: `{"username":"newuser","email":"newuser@example.com"}`
 
-#### 1.2 查看启动日志
-启动后，在控制台中查找以下关键日志：
+#### 3. 自定义业务日志测试
+- **接口**: `POST /api/log-test/business`
+- **注解**: `@GenericLog`
+- **功能**: 测试自定义实体类的日志记录
+- **参数**: `businessType=订单处理&description=测试订单创建&department=技术部&project=电商系统`
 
-**✅ 成功标志：**
-```
-[main] INFO  c.d.c.log.config.LogConfiguration - 初始化JdbcTemplate
-[main] INFO  c.d.c.log.service.LogSenderService - 注册日志发送器: database -> UnifiedDatabaseSender
-[main] INFO  c.d.c.log.service.LogSenderService - 日志发送器初始化完成，共注册1个发送器
-```
+## 测试各种Sender
 
-**❌ 失败标志：**
-```
-[main] WARN  c.d.c.log.service.LogSenderService - 未找到支持的日志发送器，类型: database
-```
+### 1. Kafka Sender测试
 
-#### 1.3 测试日志发送
-```bash
-# 测试用户登录（访问日志）
-curl -X POST http://localhost:8080/api/users/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"testpass"}'
-
-# 测试用户创建（操作日志）
-curl -X POST http://localhost:8080/api/users \
-  -H "Content-Type: application/json" \
-  -d '{"username":"newuser","email":"newuser@example.com"}'
-```
-
-#### 1.4 验证数据库存储
-```sql
--- 连接到PostgreSQL
-psql -h localhost -U postgres -d postgres
-
--- 查看日志表（如果自动创建了表）
-\dt log_*
-
--- 查看日志数据
-SELECT * FROM common_logs ORDER BY create_time DESC LIMIT 10;
-```
-
-#### 1.5 停止应用
-```bash
-# 在启动应用的终端中按 Ctrl+C
-# 或者使用pkill命令
-pkill -f "spring-boot:run"
-```
-
----
-
-### 测试2: Kafka Sender
-
-#### 2.1 启动应用
+#### 启动应用
 ```bash
 cd example
 mvn spring-boot:run -Dspring-boot.run.profiles=kafka
 ```
 
-#### 2.2 查看启动日志
-启动后，在控制台中查找以下关键日志：
-
-**✅ 成功标志：**
-```
-[main] INFO  c.d.c.log.config.LogConfiguration - 配置Kafka生产者工厂: {bootstrap.servers=localhost:9092, ...}
-[main] INFO  c.d.c.log.config.LogConfiguration - 初始化KafkaTemplate
-[main] INFO  c.d.c.log.service.LogSenderService - 注册日志发送器: kafka -> UnifiedKafkaSender
-[main] INFO  c.d.c.log.service.LogSenderService - 日志发送器初始化完成，共注册1个发送器
-```
-
-**❌ 失败标志：**
-```
-[main] WARN  c.d.c.log.service.LogSenderService - 未找到支持的日志发送器，类型: kafka
-[main] ERROR o.a.kafka.clients.NetworkClient - [Producer clientId=producer-1] Connection to node -1 could not be established
-```
-
-#### 2.3 测试日志发送
+#### 测试操作日志
 ```bash
-# 测试用户登录（访问日志）
-curl -X POST http://localhost:8080/api/users/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"testpass"}'
-
-# 测试用户创建（操作日志）
 curl -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"张三","email":"zhangsan@example.com"}'
+```
+
+#### 测试用户访问日志
+```bash
+curl -X GET http://localhost:8080/api/users
+```
+
+#### 测试通用日志（自定义实体）
+```bash
+curl -X POST http://localhost:8080/api/logs/test/business \
+  -H "Content-Type: application/json" \
+  -d '{"businessType":"订单处理","department":"技术部","project":"电商系统"}'
+```
+
+#### 测试LogTestController的三个接口
+
+##### 1. 用户访问日志测试（预设）
+```bash
+curl -X POST http://localhost:8080/api/log-test/user-access \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"123456"}'
+```
+
+##### 2. 操作日志测试（预设）
+```bash
+curl -X POST http://localhost:8080/api/log-test/operation \
   -H "Content-Type: application/json" \
   -d '{"username":"newuser","email":"newuser@example.com"}'
 ```
 
-#### 2.4 验证Kafka消息
+##### 3. 自定义业务日志测试
 ```bash
-# 使用Kafka控制台消费者查看消息
-kafka-console-consumer --bootstrap-server localhost:9092 --topic access-log --from-beginning
-kafka-console-consumer --bootstrap-server localhost:9092 --topic operation-log --from-beginning
-
-# 或者查看所有日志相关的topic
-kafka-topics --bootstrap-server localhost:9092 --list | grep log
+curl -X POST "http://localhost:8080/api/log-test/business?businessType=订单处理&description=测试订单创建&department=技术部&project=电商系统"
 ```
 
-#### 2.5 停止应用
+#### 查看Kafka消息
 ```bash
-# 在启动应用的终端中按 Ctrl+C
-# 或者使用pkill命令
-pkill -f "spring-boot:run"
+# 查看操作日志
+docker exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic operation-log --from-beginning --max-messages 5
+
+# 查看用户访问日志
+docker exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic access-log --from-beginning --max-messages 5
+
+# 查看通用日志（根据实体类名生成topic）
+docker exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic log_business_log_entity --from-beginning --max-messages 5
 ```
 
----
+### 2. Elasticsearch Sender测试
 
-### 测试3: Elasticsearch Sender
-
-#### 3.1 启动应用
+#### 启动应用
 ```bash
 cd example
 mvn spring-boot:run -Dspring-boot.run.profiles=elasticsearch
 ```
 
-#### 3.2 查看启动日志
-启动后，在控制台中查找以下关键日志：
-
-**✅ 成功标志：**
-```
-[main] INFO  c.d.c.log.config.LogConfiguration - 初始化RestTemplate
-[main] INFO  c.d.c.log.service.LogSenderService - 注册日志发送器: elasticsearch -> UnifiedElasticsearchSender
-[main] INFO  c.d.c.log.service.LogSenderService - 日志发送器初始化完成，共注册1个发送器
-```
-
-**❌ 失败标志：**
-```
-[main] WARN  c.d.c.log.service.LogSenderService - 未找到支持的日志发送器，类型: elasticsearch
-[main] ERROR c.d.c.log.sender.impl.UnifiedElasticsearchSender - ❌ Elasticsearch日志发送失败
-```
-
-#### 3.3 测试日志发送
+#### 执行测试请求
 ```bash
-# 测试用户登录（访问日志）
-curl -X POST http://localhost:8080/api/users/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"testpass"}'
-
-# 测试用户创建（操作日志）
+# 测试操作日志
 curl -X POST http://localhost:8080/api/users \
   -H "Content-Type: application/json" \
+  -d '{"name":"李四","email":"lisi@example.com"}'
+
+# 测试用户访问日志
+curl -X GET http://localhost:8080/api/users
+
+# 测试通用日志
+curl -X POST http://localhost:8080/api/logs/test/business \
+  -H "Content-Type: application/json" \
+  -d '{"businessType":"用户管理","department":"运营部","project":"CRM系统"}'
+
+# 测试LogTestController的三个接口
+curl -X POST http://localhost:8080/api/log-test/user-access \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"123456"}'
+
+curl -X POST http://localhost:8080/api/log-test/operation \
+  -H "Content-Type: application/json" \
   -d '{"username":"newuser","email":"newuser@example.com"}'
+
+curl -X POST "http://localhost:8080/api/log-test/business?businessType=订单处理&description=测试订单创建&department=技术部&project=电商系统"
 ```
 
-#### 3.4 验证Elasticsearch存储
+#### 查看Elasticsearch数据
 ```bash
-# 检查Elasticsearch健康状态
-curl -X GET "localhost:9200/_cluster/health?pretty"
+# 查看所有索引
+curl -X GET "localhost:9200/_cat/indices?v"
 
-# 查看所有日志相关的索引
-curl -X GET "localhost:9200/_cat/indices?v" | grep log
-
-# 查看具体索引的数据
-curl -X GET "localhost:9200/logs-useraccesslog-2024-01/_search?pretty"
-curl -X GET "localhost:9200/logs-operationlog-2024-01/_search?pretty"
+# 查看日志数据
+curl -X GET "localhost:9200/logs-*/_search?pretty" -H 'Content-Type: application/json' -d'
+{
+  "query": {
+    "match_all": {}
+  },
+  "size": 10
+}'
 ```
 
-#### 3.5 停止应用
+#### 在Kibana中查看
+1. 访问 http://localhost:5601
+2. 创建索引模式：`.ds-logs-*`
+3. 在Discover中查看日志数据
+
+### 3. Database Sender测试
+
+#### 启动应用
 ```bash
-# 在启动应用的终端中按 Ctrl+C
-# 或者使用pkill命令
-pkill -f "spring-boot:run"
+cd example
+mvn spring-boot:run -Dspring-boot.run.profiles=database
 ```
 
----
+#### 执行测试请求
+```bash
+# 测试操作日志
+curl -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"王五","email":"wangwu@example.com"}'
 
-### 测试4: HTTP Sender
+# 测试用户访问日志
+curl -X GET http://localhost:8080/api/users
 
-#### 4.1 启动应用
+# 测试通用日志
+curl -X POST http://localhost:8080/api/logs/test/business \
+  -H "Content-Type: application/json" \
+  -d '{"businessType":"数据同步","department":"数据部","project":"数据平台"}'
+
+# 测试LogTestController的三个接口
+curl -X POST http://localhost:8080/api/log-test/user-access \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"123456"}'
+
+curl -X POST http://localhost:8080/api/log-test/operation \
+  -H "Content-Type: application/json" \
+  -d '{"username":"newuser","email":"newuser@example.com"}'
+
+curl -X POST "http://localhost:8080/api/log-test/business?businessType=订单处理&description=测试订单创建&department=技术部&project=电商系统"
+```
+
+#### 查看数据库数据
+```bash
+# 连接PostgreSQL
+docker exec -it postgres psql -U postgres -d postgres
+
+# 查看表结构
+\d common_logs
+
+# 查看日志数据
+SELECT * FROM common_logs ORDER BY timestamp DESC LIMIT 10;
+
+# 查看自定义字段
+SELECT id, timestamp, content, level, entity_type, business_type, department, project 
+FROM common_logs 
+WHERE entity_type = 'BusinessLogEntity' 
+ORDER BY timestamp DESC;
+```
+
+### 4. HTTP Sender测试
+
+#### 启动应用
 ```bash
 cd example
 mvn spring-boot:run -Dspring-boot.run.profiles=http
 ```
 
-#### 4.2 查看启动日志
-启动后，在控制台中查找以下关键日志：
-
-**✅ 成功标志：**
-```
-[main] INFO  c.d.c.log.config.LogConfiguration - 初始化RestTemplate
-[main] INFO  c.d.c.log.service.LogSenderService - 注册日志发送器: http -> UnifiedHttpSender
-[main] INFO  c.d.c.log.service.LogSenderService - 日志发送器初始化完成，共注册1个发送器
-```
-
-**❌ 失败标志：**
-```
-[main] WARN  c.d.c.log.service.LogSenderService - 未找到支持的日志发送器，类型: http
-[main] ERROR c.d.c.log.sender.impl.UnifiedHttpSender - ❌ HTTP请求异常
-```
-
-#### 4.3 测试日志发送
+#### 执行测试请求
 ```bash
-# 测试用户登录（访问日志）
-curl -X POST http://localhost:8080/api/users/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"testpass"}'
-
-# 测试用户创建（操作日志）
+# 测试操作日志
 curl -X POST http://localhost:8080/api/users \
   -H "Content-Type: application/json" \
+  -d '{"name":"赵六","email":"zhaoliu@example.com"}'
+
+# 测试用户访问日志
+curl -X GET http://localhost:8080/api/users
+
+# 测试通用日志
+curl -X POST http://localhost:8080/api/logs/test/business \
+  -H "Content-Type: application/json" \
+  -d '{"businessType":"系统监控","department":"运维部","project":"监控平台"}'
+
+# 测试LogTestController的三个接口
+curl -X POST http://localhost:8080/api/log-test/user-access \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"123456"}'
+
+curl -X POST http://localhost:8080/api/log-test/operation \
+  -H "Content-Type: application/json" \
   -d '{"username":"newuser","email":"newuser@example.com"}'
+
+curl -X POST "http://localhost:8080/api/log-test/business?businessType=订单处理&description=测试订单创建&department=技术部&project=电商系统"
 ```
 
-#### 4.4 验证HTTP发送
-HTTP sender会将日志发送到配置的端点。由于配置的端点是本地地址，您需要：
-
-1. **查看应用日志**：在控制台中查找HTTP发送的日志
-2. **设置接收端点**：可以启动另一个应用来接收HTTP日志
-3. **使用网络抓包工具**：如Wireshark或tcpdump来查看HTTP请求
-
-**查看HTTP发送日志：**
+#### 查看HTTP日志服务器输出
+HTTP日志服务器会显示接收到的日志数据：
 ```
-[main] INFO  c.d.c.log.sender.impl.UnifiedHttpSender - ✅ HTTP日志发送成功 - Endpoint: http://localhost:8080/api/logs/generic, Status: 200
+📥 接收到HTTP日志 - 14:30:15
+{
+  "id": "log_20240904_143015_001",
+  "timestamp": "2024-09-04T14:30:15",
+  "content": "业务操作: 系统监控",
+  "level": "INFO",
+  "entityType": "BusinessLogEntity",
+  "businessType": "系统监控",
+  "department": "运维部",
+  "project": "监控平台"
+}
 ```
 
-#### 4.5 停止应用
+## 测试场景
+
+### 1. 基础功能测试
+- [x] 操作日志记录（UserController）
+- [x] 用户访问日志记录（UserController）
+- [x] 通用日志记录（LogTestController）
+- [x] 预设日志测试（LogTestController - 用户访问日志）
+- [x] 预设日志测试（LogTestController - 操作日志）
+- [x] 自定义日志测试（LogTestController - 业务日志）
+- [x] 异步发送
+- [x] 批量发送
+
+### 2. 存储方式测试
+- [x] Kafka存储
+- [x] Elasticsearch存储
+- [x] Database存储
+- [x] HTTP存储
+
+### 3. 动态字段测试
+- [x] 自动创建数据库表
+- [x] 动态添加列
+- [x] 字段类型映射
+- [x] 列名转换
+
+### 4. 配置测试
+- [x] 自定义表名
+- [x] 自动建表开关
+- [x] 多环境配置
+- [x] 敏感字段过滤
+
+## 故障排除
+
+### 1. Kafka连接失败
 ```bash
-# 在启动应用的终端中按 Ctrl+C
-# 或者使用pkill命令
-pkill -f "spring-boot:run"
+# 检查Kafka是否运行
+docker ps | grep kafka
+
+# 重启Kafka
+docker compose restart kafka
 ```
 
----
-
-## 🔍 日志分析指南
-
-### 关键日志模式
-
-#### 1. Sender注册日志
-```
-[main] INFO  c.d.c.log.service.LogSenderService - 注册日志发送器: {type} -> {SenderClass}
-[main] INFO  c.d.c.log.service.LogSenderService - 日志发送器初始化完成，共注册{N}个发送器
-```
-
-#### 2. 配置加载日志
-```
-[main] INFO  c.d.c.log.config.LogConfiguration - 初始化{BeanName}
-[main] INFO  c.d.c.log.config.LogConfiguration - 配置{ComponentName}: {config}
-```
-
-#### 3. 日志发送日志
-```
-[main] INFO  c.d.c.log.sender.impl.{SenderClass} - ✅ {Type}日志发送成功
-[main] ERROR c.d.c.log.sender.impl.{SenderClass} - ❌ {Type}日志发送失败
-```
-
-### 常见问题排查
-
-#### 1. Sender未注册
-**问题**：日志显示"未找到支持的日志发送器"
-**排查步骤**：
-1. 检查配置文件中的`enabled`设置
-2. 检查`@ConditionalOnProperty`条件
-3. 检查依赖服务是否启动
-
-#### 2. 依赖服务连接失败
-**问题**：数据库/Kafka/Elasticsearch连接失败
-**排查步骤**：
-1. 检查服务是否启动
-2. 检查端口是否正确
-3. 检查网络连接
-
-#### 3. Bean注册失败
-**问题**：相关Bean未注册
-**排查步骤**：
-1. 检查`@ConditionalOnClass`条件
-2. 检查依赖是否在classpath中
-3. 检查自动配置是否生效
-
-## 📊 测试结果记录
-
-### 测试结果表格
-
-| Sender类型 | 配置文件 | 注册状态 | 功能测试 | 备注 |
-|-----------|---------|---------|---------|------|
-| Database | application-database.yml | ✅/❌ | ✅/❌ | |
-| Kafka | application-kafka.yml | ✅/❌ | ✅/❌ | |
-| Elasticsearch | application-elasticsearch.yml | ✅/❌ | ✅/❌ | |
-| HTTP | application-http.yml | ✅/❌ | ✅/❌ | |
-
-### 测试日志文件
-
-建议为每次测试保存日志文件：
-
+### 2. Elasticsearch连接失败
 ```bash
-# 测试Database sender
-mvn spring-boot:run -Dspring-boot.run.profiles=database > database_test.log 2>&1
+# 检查Elasticsearch状态
+curl -X GET "localhost:9200/_cluster/health?pretty"
 
-# 测试Kafka sender  
-mvn spring-boot:run -Dspring-boot.run.profiles=kafka > kafka_test.log 2>&1
-
-# 测试Elasticsearch sender
-mvn spring-boot:run -Dspring-boot.run.profiles=elasticsearch > es_test.log 2>&1
-
-# 测试HTTP sender
-mvn spring-boot:run -Dspring-boot.run.profiles=http > http_test.log 2>&1
+# 重启Elasticsearch
+docker compose restart elasticsearch
 ```
 
-## 🚀 自动化测试脚本
-
-### 快速测试脚本
+### 3. 数据库连接失败
 ```bash
-#!/bin/bash
-# quick_test.sh
+# 检查PostgreSQL状态
+docker ps | grep postgres
 
-echo "=== 开始测试所有Sender ==="
-
-# 测试Database
-echo "🔍 测试Database Sender..."
-mvn spring-boot:run -Dspring-boot.run.profiles=database > database_test.log 2>&1 &
-sleep 10
-grep -q "注册日志发送器.*database" database_test.log && echo "✅ Database Sender 注册成功" || echo "❌ Database Sender 注册失败"
-pkill -f "spring-boot:run"
-sleep 2
-
-# 测试Kafka
-echo "🔍 测试Kafka Sender..."
-mvn spring-boot:run -Dspring-boot.run.profiles=kafka > kafka_test.log 2>&1 &
-sleep 10
-grep -q "注册日志发送器.*kafka" kafka_test.log && echo "✅ Kafka Sender 注册成功" || echo "❌ Kafka Sender 注册失败"
-pkill -f "spring-boot:run"
-sleep 2
-
-# 测试Elasticsearch
-echo "🔍 测试Elasticsearch Sender..."
-mvn spring-boot:run -Dspring-boot.run.profiles=elasticsearch > es_test.log 2>&1 &
-sleep 10
-grep -q "注册日志发送器.*elasticsearch" es_test.log && echo "✅ Elasticsearch Sender 注册成功" || echo "❌ Elasticsearch Sender 注册失败"
-pkill -f "spring-boot:run"
-sleep 2
-
-# 测试HTTP
-echo "🔍 测试HTTP Sender..."
-mvn spring-boot:run -Dspring-boot.run.profiles=http > http_test.log 2>&1 &
-sleep 10
-grep -q "注册日志发送器.*http" http_test.log && echo "✅ HTTP Sender 注册成功" || echo "❌ HTTP Sender 注册失败"
-pkill -f "spring-boot:run"
-
-echo "=== 测试完成 ==="
+# 重启PostgreSQL
+docker compose restart postgres
 ```
 
-## 📝 总结
+### 4. 端口冲突
+```bash
+# 查看端口占用
+lsof -i :8080
 
-通过以上测试流程，您可以：
+# 杀死占用进程
+lsof -ti :8080 | xargs kill -9
+```
 
-1. **验证Sender注册**：确认各个sender在相应配置下正确注册
-2. **测试功能完整性**：验证日志发送功能是否正常工作
-3. **排查问题**：通过日志分析快速定位问题
-4. **记录测试结果**：为后续优化提供依据
+## 性能测试
 
-记住：每次测试前确保相关依赖服务已启动，测试后及时停止应用以释放端口。
+### 1. 批量发送测试
+```bash
+# 发送大量请求测试批量处理
+for i in {1..100}; do
+  curl -X POST http://localhost:8080/api/logs/test/business \
+    -H "Content-Type: application/json" \
+    -d "{\"businessType\":\"测试$i\",\"department\":\"测试部\",\"project\":\"性能测试\"}" &
+done
+wait
+```
+
+### 2. 异步处理测试
+```bash
+# 测试异步处理性能
+time curl -X POST http://localhost:8080/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"性能测试","email":"perf@example.com"}'
+```
+
+## 监控指标
+
+### 1. 应用日志
+查看应用启动日志中的发送器注册信息：
+```
+注册日志发送器: kafka -> UnifiedKafkaSender
+注册日志发送器: elasticsearch -> UnifiedElasticsearchSender
+注册日志发送器: database -> UnifiedDatabaseSender
+注册日志发送器: http -> UnifiedHttpSender
+```
+
+### 2. 数据库监控
+```sql
+-- 查看表大小
+SELECT 
+    schemaname,
+    tablename,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
+FROM pg_tables 
+WHERE tablename = 'common_logs';
+
+-- 查看记录数
+SELECT COUNT(*) FROM common_logs;
+```
+
+### 3. Elasticsearch监控
+```bash
+# 查看索引统计
+curl -X GET "localhost:9200/logs-*/_stats?pretty"
+```
