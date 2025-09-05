@@ -21,7 +21,7 @@ import java.util.Map;
 /**
  * 日志配置类
  * 
- * @author diit
+ * @author zzx
  */
 @Slf4j
 @Configuration

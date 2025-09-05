@@ -12,7 +12,7 @@ import java.util.Map;
  * 订单日志实体类
  * 演示如何在具体项目中继承BaseLogEntity并添加业务相关字段
  * 
- * @author diit
+ * @author zzx
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

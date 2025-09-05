@@ -21,7 +21,7 @@ import java.util.UUID;
  * 直接Kafka服务
  * 不依赖Spring的KafkaTemplate，直接使用Kafka客户端
  * 
- * @author diit
+ * @author zzx
  */
 @Slf4j
 @Service

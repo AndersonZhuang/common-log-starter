@@ -7,7 +7,7 @@ import lombok.EqualsAndHashCode;
  * 默认日志实体类
  * 当@GenericLog注解没有指定entityClass时使用
  * 
- * @author diit
+ * @author zzx
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

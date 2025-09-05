@@ -10,7 +10,7 @@ import java.util.Map;
  * 用户活动日志实体类
  * 演示用户行为追踪的自定义字段
  * 
- * @author diit
+ * @author zzx
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

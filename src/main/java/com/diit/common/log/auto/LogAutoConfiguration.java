@@ -21,12 +21,12 @@ import org.springframework.kafka.core.KafkaTemplate;
 /**
  * 日志自动配置类
  * 
- * @author diit
+ * @author zzx
  */
 @Slf4j
 @Configuration
 @EnableConfigurationProperties(LogProperties.class)
-@ConditionalOnProperty(prefix = "common.log", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "diit.log", name = "enabled", havingValue = "true", matchIfMissing = true)
 @Import({LogConfiguration.class})
 @ComponentScan(basePackages = "com.diit.common.log")
 public class LogAutoConfiguration {
@@ -88,7 +88,7 @@ public class LogAutoConfiguration {
      */
     @Configuration
     @ConditionalOnClass(KafkaTemplate.class)
-    @ConditionalOnProperty(prefix = "common.log.sender.kafka", name = "enabled", havingValue = "true")
+    @ConditionalOnProperty(prefix = "diit.log.kafka", name = "enabled", havingValue = "true")
     static class KafkaConfiguration {
         
         // 这个Bean现在由LogConfiguration提供，这里不再重复定义

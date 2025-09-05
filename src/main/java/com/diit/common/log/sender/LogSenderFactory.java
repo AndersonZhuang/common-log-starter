@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 日志发送器工厂
  * 管理传统LogSender和通用GenericLogSender
  * 
- * @author diit
+ * @author zzx
  */
 @Slf4j
 @Component

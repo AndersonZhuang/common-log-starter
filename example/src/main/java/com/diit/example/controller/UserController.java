@@ -11,7 +11,7 @@ import java.util.Map;
  * 用户控制器示例
  * 演示日志注解的使用
  * 
- * @author diit
+ * @author zzx
  */
 @RestController
 @RequestMapping("/api/users")

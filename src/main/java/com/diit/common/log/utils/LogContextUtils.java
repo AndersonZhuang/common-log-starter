@@ -9,7 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
  * 日志上下文工具类
  * 用于获取当前请求的上下文信息
  * 
- * @author diit
+ * @author zzx
  */
 public class LogContextUtils {
     

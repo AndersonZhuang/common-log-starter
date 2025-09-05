@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
  * }
  * </pre>
  * 
- * @author diit
+ * @author zzx
  */
 @Data
 public abstract class BaseLogEntity {

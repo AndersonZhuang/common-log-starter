@@ -14,7 +14,7 @@ import java.util.Map;
  * 日志测试控制器
  * 提供三个测试接口：两个预设日志测试，一个自定义日志测试
  * 
- * @author diit
+ * @author zzx
  */
 @Slf4j
 @RestController

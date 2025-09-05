@@ -9,7 +9,7 @@ import lombok.EqualsAndHashCode;
  * 用于测试@GenericLog注解的自定义实体功能
  * 只保留四个核心业务字段，避免冗余
  * 
- * @author diit
+ * @author zzx
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

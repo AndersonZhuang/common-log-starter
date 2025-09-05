@@ -9,7 +9,7 @@ import java.util.Map;
  * 日志接收控制器
  * 用于接收HTTP发送器发送的日志
  * 
- * @author diit
+ * @author zzx
  */
 @Slf4j
 @RestController

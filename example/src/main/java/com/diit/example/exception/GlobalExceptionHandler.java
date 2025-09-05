@@ -13,7 +13,7 @@ import java.util.Map;
  * 全局异常处理器
  * 用于测试异常情况下的日志记录
  * 
- * @author diit
+ * @author zzx
  */
 @Slf4j
 @RestControllerAdvice

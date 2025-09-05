@@ -15,7 +15,7 @@ import java.util.UUID;
  * 日志实体工厂
  * 负责创建和填充日志实体的基础字段
  * 
- * @author diit
+ * @author zzx
  */
 @Slf4j
 @Component

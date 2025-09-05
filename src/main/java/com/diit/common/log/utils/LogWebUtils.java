@@ -10,7 +10,7 @@ import java.net.UnknownHostException;
 /**
  * 日志Web工具类
  * 
- * @author diit
+ * @author zzx
  */
 @Slf4j
 public class LogWebUtils {

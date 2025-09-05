@@ -7,7 +7,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 /**
  * 示例应用主类
  * 
- * @author diit
+ * @author zzx
  */
 @SpringBootApplication
 @EnableAspectJAutoProxy

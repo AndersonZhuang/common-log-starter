@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 日志发送服务
  * 管理所有的日志发送器，根据配置和注解选择合适的发送器
  * 
- * @author diit
+ * @author zzx
  */
 @Slf4j
 @Service

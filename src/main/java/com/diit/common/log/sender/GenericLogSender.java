@@ -7,7 +7,7 @@ import com.diit.common.log.entity.BaseLogEntity;
  * 支持任何继承自BaseLogEntity的实体类
  * 
  * @param <T> 日志实体类型，必须继承自BaseLogEntity
- * @author diit
+ * @author zzx
  */
 public interface GenericLogSender<T extends BaseLogEntity> {
     

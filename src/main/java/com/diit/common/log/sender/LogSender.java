@@ -6,7 +6,7 @@ import com.diit.common.log.entity.OperationLogEntity;
 /**
  * 日志发送器接口
  * 
- * @author diit
+ * @author zzx
  */
 public interface LogSender {
     

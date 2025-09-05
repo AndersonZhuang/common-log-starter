@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * 日志配置属性
  * 
- * @author diit
+ * @author zzx
  */
 @Data
 @ConfigurationProperties(prefix = "diit.log")

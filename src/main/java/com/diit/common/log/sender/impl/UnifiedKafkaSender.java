@@ -20,7 +20,7 @@ import java.util.concurrent.CompletableFuture;
  * 统一Kafka发送器
  * 支持任何继承自BaseLogEntity的实体类，包括自定义字段
  * 
- * @author diit
+ * @author zzx
  */
 @Slf4j
 @Component

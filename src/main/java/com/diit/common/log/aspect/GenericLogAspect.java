@@ -24,7 +24,7 @@ import java.lang.reflect.Method;
  * 通用日志切面
  * 支持任何继承自BaseLogEntity的自定义实体类
  * 
- * @author diit
+ * @author zzx
  */
 @Slf4j
 @Aspect

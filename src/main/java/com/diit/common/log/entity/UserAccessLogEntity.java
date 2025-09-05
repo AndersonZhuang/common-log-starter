@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 /**
  * 用户访问日志实体
  * 
- * @author diit
+ * @author zzx
  */
 @Data
 @Builder

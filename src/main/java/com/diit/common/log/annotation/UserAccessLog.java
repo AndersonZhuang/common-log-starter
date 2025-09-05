@@ -6,7 +6,7 @@ import java.lang.annotation.*;
  * 用户访问日志注解
  * 用于标记需要记录用户访问日志的方法
  * 
- * @author diit
+ * @author zzx
  */
 @Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)

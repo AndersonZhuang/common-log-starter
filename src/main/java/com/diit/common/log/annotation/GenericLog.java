@@ -24,7 +24,7 @@ import java.lang.annotation.*;
  * public void importantAction() { ... }
  * </pre>
  * 
- * @author diit
+ * @author zzx
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)

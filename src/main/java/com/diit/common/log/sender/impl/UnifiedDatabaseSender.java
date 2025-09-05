@@ -20,7 +20,7 @@ import java.util.List;
  * 支持任何继承自BaseLogEntity的实体类，包括自定义字段
  * 使用动态表结构存储自定义字段
  * 
- * @author diit
+ * @author zzx
  */
 @Slf4j
 @Component
